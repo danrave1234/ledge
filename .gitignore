@@ -1,0 +1,20 @@
+.DS_Store
+Thumbs.db
+node_modules
+/build
+/.svelte-kit
+/package
+.env
+.env.*
+!.env.example
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Rust / Tauri build artifacts
+/src-tauri/target
+/src-tauri/gen
+
+# Updater signing keys — SECRET, never commit these
+perch-updater.key
+perch-updater.key.pub
+*.key
