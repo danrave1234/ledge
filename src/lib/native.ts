@@ -4,26 +4,45 @@ export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
+/** Invoke a Tauri command. Throws if not running in the desktop app. */
+async function cmd<T = void>(
+  name: string,
+  args?: Record<string, unknown>,
+): Promise<T> {
+  const { invoke } = await import("@tauri-apps/api/core");
+  return await invoke<T>(name, args);
+}
+
+/** Invoke a command, swallowing any error and returning `fallback` instead.
+    Also returns `fallback` in the browser preview (no Tauri runtime). */
+async function tryCmd<T>(
+  name: string,
+  fallback: T,
+  args?: Record<string, unknown>,
+): Promise<T> {
+  if (!isTauri()) return fallback;
+  try {
+    return await cmd<T>(name, args);
+  } catch {
+    return fallback;
+  }
+}
+
 export async function dock(placement: Placement, expanded: boolean): Promise<void> {
   if (!isTauri()) return;
-  const { invoke } = await import("@tauri-apps/api/core");
   try {
-    await invoke("dock_window", { placement, expanded });
+    await cmd("dock_window", { placement, expanded });
   } catch (e) {
     console.error("dock_window failed", e);
   }
 }
 
 export async function showPanel(): Promise<void> {
-  if (!isTauri()) return;
-  const { invoke } = await import("@tauri-apps/api/core");
-  await invoke("show_panel");
+  if (isTauri()) await cmd("show_panel");
 }
 
 export async function hidePanel(): Promise<void> {
-  if (!isTauri()) return;
-  const { invoke } = await import("@tauri-apps/api/core");
-  await invoke("hide_panel");
+  if (isTauri()) await cmd("hide_panel");
 }
 
 export type TrayAction = "open" | "settings";
@@ -64,21 +83,15 @@ export async function registerHotkey(
 }
 
 export async function saveApiKey(key: string): Promise<void> {
-  if (!isTauri()) return;
-  const { invoke } = await import("@tauri-apps/api/core");
-  await invoke("set_api_key", { key });
+  if (isTauri()) await cmd("set_api_key", { key });
 }
 
 export async function hasApiKey(): Promise<boolean> {
-  if (!isTauri()) return false;
-  const { invoke } = await import("@tauri-apps/api/core");
-  return await invoke<boolean>("has_api_key");
+  return tryCmd("has_api_key", false);
 }
 
 export async function clearApiKey(): Promise<void> {
-  if (!isTauri()) return;
-  const { invoke } = await import("@tauri-apps/api/core");
-  await invoke("clear_api_key");
+  if (isTauri()) await cmd("clear_api_key");
 }
 
 export interface Shot {
@@ -89,8 +102,7 @@ export interface Shot {
 
 export async function captureScreen(): Promise<Shot> {
   if (!isTauri()) throw new Error("Screen capture needs the desktop app");
-  const { invoke } = await import("@tauri-apps/api/core");
-  return await invoke<Shot>("capture_screen");
+  return cmd<Shot>("capture_screen");
 }
 
 export interface ScreenContext {
@@ -102,92 +114,44 @@ export interface ScreenContext {
 
 // Capture + OCR the screen so text-only providers can use it too.
 export async function captureContext(): Promise<ScreenContext | null> {
-  if (!isTauri()) return null;
-  const { invoke } = await import("@tauri-apps/api/core");
-  try {
-    return await invoke<ScreenContext>("capture_context");
-  } catch {
-    return null;
-  }
+  return tryCmd<ScreenContext | null>("capture_context", null);
 }
 
 export async function setGameMode(enabled: boolean): Promise<void> {
-  if (!isTauri()) return;
-  const { invoke } = await import("@tauri-apps/api/core");
-  await invoke("set_game_mode", { enabled });
+  if (isTauri()) await cmd("set_game_mode", { enabled });
 }
 
 export async function clearCache(): Promise<void> {
-  if (!isTauri()) return;
-  const { invoke } = await import("@tauri-apps/api/core");
-  await invoke("clear_cache");
+  if (isTauri()) await cmd("clear_cache");
 }
 
 export async function cancelStream(): Promise<void> {
-  if (!isTauri()) return;
-  const { invoke } = await import("@tauri-apps/api/core");
-  try {
-    await invoke("openai_cancel");
-  } catch {
-    /* ignore */
-  }
+  await tryCmd("openai_cancel", undefined);
 }
 
 export async function listOpenAiModels(): Promise<string[]> {
-  if (!isTauri()) return [];
-  const { invoke } = await import("@tauri-apps/api/core");
-  return await invoke<string[]>("openai_list_models");
+  return tryCmd<string[]>("openai_list_models", []);
 }
 
 export async function codexAvailable(): Promise<boolean> {
-  if (!isTauri()) return false;
-  const { invoke } = await import("@tauri-apps/api/core");
-  try {
-    return await invoke<boolean>("codex_available");
-  } catch {
-    return false;
-  }
+  return tryCmd("codex_available", false);
 }
 
 // Returns true if `codex login` was launched, false if the CLI isn't installed.
 export async function codexLogin(): Promise<boolean> {
-  if (!isTauri()) return false;
-  const { invoke } = await import("@tauri-apps/api/core");
-  try {
-    return await invoke<boolean>("codex_login");
-  } catch {
-    return false;
-  }
+  return tryCmd("codex_login", false);
 }
 
 export async function codexLoggedIn(): Promise<boolean> {
-  if (!isTauri()) return false;
-  const { invoke } = await import("@tauri-apps/api/core");
-  try {
-    return await invoke<boolean>("codex_logged_in");
-  } catch {
-    return false;
-  }
+  return tryCmd("codex_logged_in", false);
 }
 
 export async function codexLogout(): Promise<void> {
-  if (!isTauri()) return;
-  const { invoke } = await import("@tauri-apps/api/core");
-  try {
-    await invoke("codex_logout");
-  } catch {
-    /* ignore */
-  }
+  await tryCmd("codex_logout", undefined);
 }
 
 export async function setCaptureExclusion(enabled: boolean): Promise<void> {
-  if (!isTauri()) return;
-  const { invoke } = await import("@tauri-apps/api/core");
-  try {
-    await invoke("set_capture_exclusion", { enabled });
-  } catch {
-    /* older Windows / unsupported */
-  }
+  await tryCmd("set_capture_exclusion", undefined, { enabled });
 }
 
 export async function onWindowBlur(cb: () => void): Promise<() => void> {
@@ -238,13 +202,7 @@ export interface WebResult {
 }
 
 export async function webSearch(query: string): Promise<WebResult[]> {
-  if (!isTauri()) return [];
-  const { invoke } = await import("@tauri-apps/api/core");
-  try {
-    return await invoke<WebResult[]>("web_search", { query });
-  } catch {
-    return [];
-  }
+  return tryCmd<WebResult[]>("web_search", [], { query });
 }
 
 export async function openExternal(url: string): Promise<void> {

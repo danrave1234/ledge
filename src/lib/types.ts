@@ -22,7 +22,7 @@ export interface Conversation {
 }
 
 export type Placement = "top" | "left" | "right";
-export type HandleStyle = "spark" | "pulse" | "bar";
+export type HandleStyle = "pill" | "spark" | "pulse" | "bar";
 export type ThemeMode = "system" | "light" | "dark";
 
 export interface Persona {

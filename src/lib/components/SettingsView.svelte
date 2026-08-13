@@ -48,6 +48,7 @@
     { v: "right", l: "Right" },
   ];
   const handles: { v: HandleStyle; l: string }[] = [
+    { v: "pill", l: "Pill" },
     { v: "spark", l: "Spark" },
     { v: "pulse", l: "Pulse" },
     { v: "bar", l: "Bar" },
