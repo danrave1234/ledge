@@ -5,6 +5,10 @@
   import { setView, collapse, stop } from "../controller";
 
   let view = $derived($ui.view);
+  let pinned = $derived($ui.pinned);
+  function togglePin() {
+    ui.update((u) => ({ ...u, pinned: !u.pinned }));
+  }
   const titles: Record<string, string> = {
     settings: "Settings",
     history: "History",
@@ -34,6 +38,14 @@
     <strong>{titles[view] ?? ""}</strong>
     <div class="spacer"></div>
   {/if}
+  <button
+    class="icon-btn pinbtn"
+    class:on={pinned}
+    aria-label={pinned ? "Unpin (allow click-outside to close)" : "Pin open"}
+    title={pinned ? "Pinned open — click to unpin" : "Pin open"}
+    onclick={togglePin}>
+    <Icon name="pin" />
+  </button>
   <button class="icon-btn" aria-label="Collapse" onclick={() => collapse(true)}>
     <Icon name="x" />
   </button>
@@ -55,6 +67,10 @@
     font-size: 14px;
     font-weight: 600;
     margin-left: 3px;
+  }
+  .pinbtn.on {
+    color: var(--accent-text);
+    background: var(--accent-weak);
   }
   .dotwrap {
     position: relative;

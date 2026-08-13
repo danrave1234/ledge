@@ -24,6 +24,7 @@
     installUpdate,
     codexLogin,
     codexLoggedIn,
+    codexLogout,
   } from "../native";
   import { stop } from "../controller";
   import type { Placement, HandleStyle, ThemeMode } from "../types";
@@ -61,8 +62,10 @@
   // account
   let keyInput = $state("");
   let connected = $state(false);
+  let codexIn = $state(false);
   onMount(async () => {
     connected = await hasApiKey();
+    codexIn = await codexLoggedIn();
   });
   async function saveKey() {
     await saveApiKey(keyInput);
@@ -143,7 +146,8 @@
     codexBusy = true;
     codexMsg = "";
     if (await codexLoggedIn()) {
-      codexMsg = "Signed in to Codex ✓";
+      codexIn = true;
+      codexMsg = "";
       codexBusy = false;
       return;
     }
@@ -158,13 +162,24 @@
       await new Promise((r) => setTimeout(r, 2000));
       if (await codexLoggedIn()) {
         updateSettings({ providerId: "codex", model: "gpt-5.6-sol" });
-        codexMsg = "Signed in to Codex ✓";
+        codexIn = true;
+        codexMsg = "";
         codexBusy = false;
         return;
       }
     }
     codexBusy = false;
     codexMsg = "Not detected yet — finish sign-in, then click again.";
+  }
+  async function doCodexLogout() {
+    codexBusy = true;
+    await codexLogout();
+    codexIn = await codexLoggedIn();
+    codexBusy = false;
+    codexMsg = codexIn ? "Couldn’t sign out — try again." : "";
+    if (!codexIn && s.providerId === "codex") {
+      updateSettings({ providerId: "openai", model: "gpt-5.6-sol" });
+    }
   }
 
   // plugins (install-to-enable)
@@ -342,8 +357,13 @@
           {/if}
           <p class="note">Stored in Windows Credential Manager, never in plain text. Pick the “OpenAI (API key)” model to use it.</p>
           <label class="lbl">Codex subscription</label>
-          <p class="note" style="margin-top:0">Install the official Codex CLI (<code>npm i -g @openai/codex</code>), then sign in with your ChatGPT plan and pick the “Codex CLI” model.</p>
-          <button class="btn" style="margin-top:8px" onclick={doCodexLogin} disabled={codexBusy}><Icon name="sparkles" size={15} /> {codexBusy ? "Checking…" : "Sign in with Codex"}</button>
+          {#if codexIn}
+            <div class="connected"><Icon name="check" size={15} /> Signed in to Codex <button class="mini" onclick={doCodexLogout} disabled={codexBusy}>{codexBusy ? "…" : "Sign out"}</button></div>
+            <p class="note">Using your ChatGPT plan via the Codex CLI. Pick a Codex model to chat with it.</p>
+          {:else}
+            <p class="note" style="margin-top:0">Install the official Codex CLI (<code>npm i -g @openai/codex</code>), then sign in with your ChatGPT plan and pick a Codex model.</p>
+            <button class="btn" style="margin-top:8px" onclick={doCodexLogin} disabled={codexBusy}><Icon name="sparkles" size={15} /> {codexBusy ? "Checking…" : "Sign in with Codex"}</button>
+          {/if}
           {#if codexMsg}<p class="note" style="margin-top:8px">{codexMsg}</p>{/if}
         {:else if section === "storage"}
           <h3>Storage</h3>

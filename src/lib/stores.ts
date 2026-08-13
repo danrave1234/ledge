@@ -307,14 +307,22 @@ export function saveActive() {
     const existing = list.find((c) => c.id === id);
     if (existing) {
       return list.map((c) =>
-        c.id === id ? { ...c, messages: msgs, title, updatedAt: now } : c,
+        c.id === id
+          ? { ...c, messages: msgs, title: c.titled ? c.title : title, updatedAt: now }
+          : c,
       );
     }
     return [
-      { id, title, messages: msgs, createdAt: now, updatedAt: now },
+      { id, title, titled: false, messages: msgs, createdAt: now, updatedAt: now },
       ...list,
     ];
   });
+}
+
+export function setConversationTitle(id: string, title: string) {
+  conversations.update((list) =>
+    list.map((c) => (c.id === id ? { ...c, title, titled: true } : c)),
+  );
 }
 
 export function openConversation(id: string) {
