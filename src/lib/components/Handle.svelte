@@ -49,47 +49,49 @@
   /* OPPO-style idle pill: a thin frosted sliver flush with the screen edge that
      brightens and grows the moment the pointer nears. Adaptive translucent fill. */
   .pill {
-    --pill-fill: rgba(20, 20, 28, 0.34); /* light bg → translucent dark */
+    --pill-fill: rgba(255, 255, 255, 0.65); /* clean white sliver, like OPPO */
     background: var(--pill-fill);
     backdrop-filter: blur(8px) saturate(1.2);
     -webkit-backdrop-filter: blur(8px) saturate(1.2);
-    opacity: 0.34;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.18);
+    opacity: 0.72;
     transition: opacity 0.18s ease, width 0.18s ease, height 0.18s ease;
   }
-  :global([data-theme="dark"]) .pill {
-    --pill-fill: rgba(255, 255, 255, 0.42); /* dark bg → translucent white */
+  /* On light backgrounds a pure-white sliver would vanish — dim it slightly. */
+  :global([data-theme="light"]) .pill {
+    --pill-fill: rgba(60, 60, 68, 0.5);
   }
-  @media (prefers-color-scheme: dark) {
-    :global(:root:not([data-theme="light"])) .pill {
-      --pill-fill: rgba(255, 255, 255, 0.42);
+  @media (prefers-color-scheme: light) {
+    :global(:root:not([data-theme="dark"])) .pill {
+      --pill-fill: rgba(60, 60, 68, 0.5);
     }
   }
   .handle.top .pill {
-    width: 46px;
-    height: 4px;
-    border-radius: 0 0 6px 6px;
+    width: 52px;
+    height: 5px;
+    border-radius: 0 0 7px 7px;
   }
   .handle.left .pill {
-    width: 4px;
-    height: 46px;
-    border-radius: 0 6px 6px 0;
+    width: 5px;
+    height: 52px;
+    border-radius: 0 7px 7px 0;
   }
   .handle.right .pill {
-    width: 4px;
-    height: 46px;
-    border-radius: 6px 0 0 6px;
+    width: 5px;
+    height: 52px;
+    border-radius: 7px 0 0 7px;
   }
   .handle:hover .pill {
-    opacity: 0.96;
+    opacity: 1;
   }
   .handle.top:hover .pill {
-    width: 56px;
+    width: 62px;
     height: 6px;
   }
   .handle.left:hover .pill,
   .handle.right:hover .pill {
     width: 6px;
-    height: 56px;
+    height: 62px;
   }
   .chip {
     display: flex;
