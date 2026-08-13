@@ -91,6 +91,7 @@ pub async fn openai_list_models() -> Result<Vec<String>, String> {
 pub async fn openai_stream(
     model: String,
     messages: serde_json::Value,
+    effort: String,
     on_event: Channel<ChatEvent>,
 ) -> Result<(), String> {
     let key = match crate::secrets::get_api_key() {
@@ -105,11 +106,14 @@ pub async fn openai_stream(
 
     CANCEL.store(false, Ordering::Relaxed);
 
-    let body = serde_json::json!({
+    let mut body = serde_json::json!({
         "model": model,
         "messages": messages,
         "stream": true
     });
+    if !effort.is_empty() {
+        body["reasoning_effort"] = serde_json::json!(effort);
+    }
 
     let client = reqwest::Client::new();
     let resp = match client

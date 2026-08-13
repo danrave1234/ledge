@@ -96,6 +96,30 @@ pub fn clear_cache(window: WebviewWindow) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Exclude (or re-include) the widget from screen capture WITHOUT hiding it, so
+/// screen-context screenshots and screen recordings don't include the panel — and
+/// no hide/show flicker. Windows 10 2004+.
+#[cfg(windows)]
+#[tauri::command]
+pub fn set_capture_exclusion(window: WebviewWindow, enabled: bool) -> Result<(), String> {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        SetWindowDisplayAffinity, WDA_EXCLUDEFROMCAPTURE, WDA_NONE,
+    };
+    if let Ok(hwnd) = window.hwnd() {
+        let affinity = if enabled { WDA_EXCLUDEFROMCAPTURE } else { WDA_NONE };
+        unsafe {
+            SetWindowDisplayAffinity(hwnd, affinity).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+#[tauri::command]
+pub fn set_capture_exclusion(_window: WebviewWindow, _enabled: bool) -> Result<(), String> {
+    Ok(())
+}
+
 /// Game mode: keep the widget overlaid on top of games. Re-asserts
 /// always-on-top and stays off the taskbar. This overlays borderless /
 /// windowed-fullscreen games (the common case); exclusive-fullscreen

@@ -1,14 +1,22 @@
 <script lang="ts">
   import Icon from "./Icon.svelte";
   import { updateSettings, completeOnboarding } from "../stores";
-  import { saveApiKey, hasApiKey, codexAvailable, codexLogin } from "../native";
+  import {
+    saveApiKey,
+    hasApiKey,
+    codexAvailable,
+    codexLogin,
+    codexLoggedIn,
+  } from "../native";
   import { fade, fly } from "svelte/transition";
 
-  let step = $state<"choose" | "apikey" | "codex">("choose");
+  let step = $state<"choose" | "apikey" | "codex" | "codexwait">("choose");
   let key = $state("");
   let err = $state("");
   let saving = $state(false);
   let codexBusy = $state(false);
+  let polling = $state(false);
+  let pollMsg = $state("Complete sign-in in your browser…");
 
   async function saveKeyAndFinish() {
     if (!key.trim()) {
@@ -25,31 +33,57 @@
         saving = false;
         return;
       }
-      updateSettings({ providerId: "openai", model: "gpt-5" });
+      updateSettings({ providerId: "openai", model: "gpt-5.6-sol" });
       completeOnboarding();
     } catch {
       err = "Couldn't save the key.";
       saving = false;
     }
   }
+  function finishCodex() {
+    updateSettings({ providerId: "codex", model: "gpt-5.6-sol" });
+    completeOnboarding();
+  }
   async function chooseCodex() {
     codexBusy = true;
     const avail = await codexAvailable();
-    if (avail) {
-      await codexLogin(); // opens ChatGPT sign-in in the browser
-      updateSettings({ providerId: "codex", model: "codex-default" });
-      completeOnboarding();
-    } else {
+    if (!avail) {
       codexBusy = false;
       step = "codex";
+      return;
     }
+    if (await codexLoggedIn()) {
+      finishCodex();
+      return;
+    }
+    await codexLogin(); // opens ChatGPT sign-in in the browser
+    codexBusy = false;
+    step = "codexwait";
+    pollCodex();
+  }
+  async function pollCodex() {
+    polling = true;
+    for (let i = 0; i < 45; i++) {
+      if (await codexLoggedIn()) {
+        finishCodex();
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    polling = false;
+    pollMsg = 'Not detected yet — finish the browser sign-in, then click below.';
+  }
+  async function recheckCodex() {
+    if (await codexLoggedIn()) {
+      finishCodex();
+      return;
+    }
+    pollMsg = "Still not signed in. Make sure the browser sign-in completed.";
   }
   function continueWithCodex() {
-    updateSettings({ providerId: "codex", model: "codex-default" });
-    completeOnboarding();
+    finishCodex();
   }
-  function useMock() {
-    updateSettings({ providerId: "mock", model: "mock-smart" });
+  function skip() {
     completeOnboarding();
   }
 </script>
@@ -73,9 +107,7 @@
         <span class="ot"><b>Codex · your ChatGPT plan</b><span>Uses the official Codex CLI — we'll open sign-in if it's installed.</span></span>
         <Icon name="arrow-right" size={16} />
       </button>
-      <button class="opt ghost" onclick={useMock}>
-        <span class="ot"><b>Try the offline demo</b><span>No account — a mock assistant to explore the UI.</span></span>
-      </button>
+      <button class="ghostlink" onclick={skip}>Skip for now — set up later</button>
     {:else if step === "apikey"}
       <button class="back" onclick={() => (step = "choose")}><Icon name="back" size={14} /> Back</button>
       <h2>Add your OpenAI key</h2>
@@ -83,7 +115,7 @@
       {#if err}<p class="err">{err}</p>{/if}
       <button class="btn btn-accent wide" onclick={saveKeyAndFinish} disabled={saving}>{saving ? "Saving…" : "Save and continue"}</button>
       <p class="fine">Stored in Windows Credential Manager, never in plain text.</p>
-    {:else}
+    {:else if step === "codex"}
       <button class="back" onclick={() => (step = "choose")}><Icon name="back" size={14} /> Back</button>
       <h2>Install Codex CLI</h2>
       <p class="sub">Codex CLI isn't installed yet — that's why sign-in didn't open. Install it, then sign in with your ChatGPT plan.</p>
@@ -91,6 +123,11 @@
       <div class="cmd">codex login</div>
       <button class="btn btn-accent wide" onclick={chooseCodex} disabled={codexBusy}>{codexBusy ? "Checking…" : "I've installed it — sign in"}</button>
       <button class="ghostlink" onclick={continueWithCodex}>Continue anyway — I'll set it up later</button>
+    {:else}
+      <button class="back" onclick={() => (step = "choose")}><Icon name="back" size={14} /> Back</button>
+      <h2>Signing in to Codex…</h2>
+      <p class="sub">{pollMsg}</p>
+      <button class="btn btn-accent wide" onclick={recheckCodex}>{polling ? "Waiting for browser…" : "I've signed in"}</button>
     {/if}
   </div>
 </div>

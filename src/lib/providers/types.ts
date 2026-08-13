@@ -17,6 +17,7 @@ export interface StreamOpts {
   screen?: boolean;
   web?: boolean;
   image?: string;
+  effort?: string;
 }
 
 export interface Provider {

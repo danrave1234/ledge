@@ -6,6 +6,7 @@ export interface Msg {
   content: string;
   usedScreen?: boolean;
   usedWeb?: boolean;
+  image?: string;
   ts: number;
   error?: boolean;
   action?: string;
@@ -35,6 +36,7 @@ export interface Settings {
   handle: HandleStyle;
   providerId: string;
   model: string;
+  effort: string;
   personaId: string;
   theme: ThemeMode;
   hoverOpen: boolean;

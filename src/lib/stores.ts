@@ -75,13 +75,14 @@ async function loadWithMigration(key: string): Promise<string | null> {
 export const DEFAULT_SETTINGS: Settings = {
   placement: "top",
   handle: "spark",
-  providerId: "mock",
-  model: "mock-smart",
+  providerId: "openai",
+  model: "gpt-5.6-sol",
+  effort: "",
   personaId: "default",
   theme: "system",
   hoverOpen: true,
   autostart: false,
-  hotkey: "Alt+Space",
+  hotkey: "CommandOrControl+Shift+Space",
   webSearch: false,
   screenContext: false,
   gameMode: false,
@@ -244,14 +245,22 @@ export const ui = writable<UiState>({
   generating: false,
 });
 
-/* ---------- canvas (expandable output container) ---------- */
-export const canvas = writable<{ open: boolean; lang: string; code: string }>({
+/* ---------- canvas (expandable output / image viewer) ---------- */
+export const canvas = writable<{
+  open: boolean;
+  lang: string;
+  code: string;
+  image?: string;
+}>({
   open: false,
   lang: "",
   code: "",
 });
 export function openCanvas(lang: string, code: string) {
   canvas.set({ open: true, lang, code });
+}
+export function openImage(url: string) {
+  canvas.set({ open: true, lang: "screen", code: "", image: url });
 }
 export function closeCanvas() {
   canvas.update((c) => ({ ...c, open: false }));
