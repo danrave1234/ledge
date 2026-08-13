@@ -17,6 +17,7 @@
   import { fade } from "svelte/transition";
 
   let expanded = $derived($ui.expanded);
+  let resizing = $derived($ui.resizing);
   const tauri = isTauri();
   const preview = !tauri;
   let collapseTimer: ReturnType<typeof setTimeout> | null = null;
@@ -142,8 +143,11 @@
 </script>
 
 <div class="root" role="presentation" onmouseenter={onEnter} onmouseleave={onLeave}>
-  {#if expanded}
-    <div class="shell" class:preview transition:fade={{ duration: 150 }}>
+  {#if resizing}
+    <!-- Window is mid-resize: draw nothing so neither the panel nor the handle
+         is painted at the wrong size (that produced ghost bars and flicker). -->
+  {:else if expanded}
+    <div class="shell" class:preview in:fade={{ duration: 120 }}>
       <Panel />
     </div>
   {:else}

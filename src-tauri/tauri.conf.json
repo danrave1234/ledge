@@ -16,7 +16,7 @@
         "title": "Perch",
         "width": 76,
         "height": 22,
-        "resizable": true,
+        "resizable": false,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
