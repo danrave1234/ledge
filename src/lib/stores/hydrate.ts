@@ -6,7 +6,7 @@ import {
   loadWithMigration,
   writeRaw,
 } from "./persistence";
-import { settings, DEFAULT_SETTINGS } from "./settings";
+import { settings, DEFAULT_SETTINGS, CURRENT_SCHEMA } from "./settings";
 import { customPersonas } from "./personas";
 import { conversations } from "./conversations";
 import { applyTheme, applyCustomCss, applyAccent } from "./theme";
@@ -22,8 +22,16 @@ export async function hydrate(): Promise<void> {
   if (s) {
     try {
       const parsed = JSON.parse(s);
-      if (parsed && typeof parsed === "object")
-        settings.set({ ...DEFAULT_SETTINGS, ...parsed });
+      if (parsed && typeof parsed === "object") {
+        const merged = { ...DEFAULT_SETTINGS, ...parsed };
+        // One-time upgrades for settings written by older builds.
+        if ((parsed.schemaVersion ?? 1) < 2) {
+          // v1 → v2: the idle handle default became the OPPO-style pill.
+          if (parsed.handle === "spark") merged.handle = "pill";
+        }
+        merged.schemaVersion = CURRENT_SCHEMA;
+        settings.set(merged);
+      }
     } catch {
       /* keep defaults */
     }

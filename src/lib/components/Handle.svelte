@@ -48,22 +48,22 @@
   }
   /* OPPO-style idle pill: a thin frosted sliver flush with the screen edge that
      brightens and grows the moment the pointer nears. Adaptive translucent fill. */
+  /* A solid fill (no backdrop-filter — it can render as a black/transparent box
+     on a transparent WebView2 window) so the sliver is always visible. */
   .pill {
-    --pill-fill: rgba(255, 255, 255, 0.65); /* clean white sliver, like OPPO */
+    --pill-fill: rgba(255, 255, 255, 0.9); /* clean white sliver, like OPPO */
     background: var(--pill-fill);
-    backdrop-filter: blur(8px) saturate(1.2);
-    -webkit-backdrop-filter: blur(8px) saturate(1.2);
-    box-shadow: 0 0 6px rgba(0, 0, 0, 0.18);
-    opacity: 0.72;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
+    opacity: 0.85;
     transition: opacity 0.18s ease, width 0.18s ease, height 0.18s ease;
   }
-  /* On light backgrounds a pure-white sliver would vanish — dim it slightly. */
+  /* On light backgrounds a white sliver would vanish — use a dark one. */
   :global([data-theme="light"]) .pill {
-    --pill-fill: rgba(60, 60, 68, 0.5);
+    --pill-fill: rgba(50, 50, 58, 0.7);
   }
   @media (prefers-color-scheme: light) {
     :global(:root:not([data-theme="dark"])) .pill {
-      --pill-fill: rgba(60, 60, 68, 0.5);
+      --pill-fill: rgba(50, 50, 58, 0.7);
     }
   }
   .handle.top .pill {
