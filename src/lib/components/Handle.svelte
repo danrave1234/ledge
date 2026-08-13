@@ -87,13 +87,19 @@
     0%, 100% { box-shadow: 0 0 0 2px var(--accent-weak); }
     50% { box-shadow: 0 0 0 4px var(--accent-weak); }
   }
+  /* The bar runs ALONG the docked edge: horizontal on top, vertical on the
+     sides. Keyed off placement directly so it can't disagree with the window. */
   .bar {
-    width: 42px;
-    height: 5px;
     border-radius: 999px;
     background: var(--border-2);
+    transition: background 0.15s ease;
   }
-  .vertical .bar {
+  .handle.top .bar {
+    width: 42px;
+    height: 5px;
+  }
+  .handle.left .bar,
+  .handle.right .bar {
     width: 5px;
     height: 42px;
   }

@@ -13,13 +13,19 @@ export function uid(): string {
 /* ---------- durable persistence backend ----------
    In the desktop app, data lives in the OS app-data folder (survives a
    WebView2 cache clear). In the browser preview it falls back to localStorage. */
+/** Strip a UTF-8 BOM — an external editor (or any tool that writes UTF-8 with
+    signature) can add one, and JSON.parse throws on it, silently wiping data. */
+function stripBom(s: string | null): string | null {
+  return s && s.charCodeAt(0) === 0xfeff ? s.slice(1) : s;
+}
+
 export async function readRaw(key: string): Promise<string | null> {
   try {
     if (isTauri()) {
       const { invoke } = await import("@tauri-apps/api/core");
-      return (await invoke<string | null>("store_read", { key })) ?? null;
+      return stripBom(await invoke<string | null>("store_read", { key })) ?? null;
     }
-    if (hasWindow) return localStorage.getItem(key);
+    if (hasWindow) return stripBom(localStorage.getItem(key));
   } catch (e) {
     console.error("readRaw failed", key, e);
   }

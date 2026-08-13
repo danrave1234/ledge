@@ -1,21 +1,9 @@
 use tauri::{Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
 
-fn target_monitor(win: &WebviewWindow) -> Option<Monitor> {
-    if let Ok(Some(m)) = win.current_monitor() {
-        return Some(m);
-    }
-    if let Ok(Some(m)) = win.primary_monitor() {
-        return Some(m);
-    }
-    win.available_monitors()
-        .ok()
-        .and_then(|v| v.into_iter().next())
-}
-
-/// Pick the monitor the widget should dock to. When the user has chosen a
-/// specific display we honor that index; otherwise fall back to the monitor the
-/// window is on (or primary). Explicit selection is what makes docking — and the
-/// hover strip — land on the right screen in multi-monitor setups.
+/// Pick the monitor the widget should dock to: the user's chosen display if set,
+/// otherwise the PRIMARY monitor. Deliberately not `current_monitor()` — that
+/// depends on wherever the window happens to sit, so on multi-monitor setups the
+/// widget would drift to an unpredictable screen.
 fn pick_monitor(win: &WebviewWindow, display: Option<usize>) -> Option<Monitor> {
     if let Some(i) = display {
         if let Ok(mons) = win.available_monitors() {
@@ -24,7 +12,15 @@ fn pick_monitor(win: &WebviewWindow, display: Option<usize>) -> Option<Monitor> 
             }
         }
     }
-    target_monitor(win)
+    if let Ok(Some(m)) = win.primary_monitor() {
+        return Some(m);
+    }
+    if let Ok(Some(m)) = win.current_monitor() {
+        return Some(m);
+    }
+    win.available_monitors()
+        .ok()
+        .and_then(|v| v.into_iter().next())
 }
 
 #[derive(serde::Serialize)]
@@ -81,15 +77,17 @@ pub fn dock_window(
     let scale = mon.scale_factor();
     let mpos = *mon.position();
     let msize = *mon.size();
+    let mw = msize.width as f64;
+    let mh = msize.height as f64;
 
     // Logical sizes, converted to physical for precise multi-DPI placement.
     let (w_l, h_l): (f64, f64) = if expanded {
         match placement.as_str() {
-            "left" | "right" => (400.0, ((msize.height as f64) / scale - 24.0).min(680.0)),
+            "left" | "right" => (400.0, (mh / scale - 80.0).min(680.0)),
             _ => (640.0, 460.0),
         }
     } else {
-        // Collapsed: a wide, thin hover strip. The visible handle is small, but the
+        // Collapsed: a long, thin hover strip. The visible handle is small, but the
         // window must be big enough to actually catch the pointer — a 76x22 target
         // was easy to miss, which is why hover-open felt broken.
         match placement.as_str() {
@@ -97,40 +95,43 @@ pub fn dock_window(
             _ => (180.0, 14.0),
         }
     };
-    let pw = (w_l * scale).round() as u32;
-    let ph = (h_l * scale).round() as u32;
 
+    // Never exceed the monitor, so the window can't be clipped (which makes the
+    // content look mis-sized and off-center inside its own frame).
+    let pw = ((w_l * scale).round() as f64).min(mw).max(1.0) as u32;
+    let ph = ((h_l * scale).round() as f64).min(mh).max(1.0) as u32;
+
+    // Center along the docked edge; hug the edge on the docked axis.
+    let center_x = mpos.x + ((mw - pw as f64) / 2.0).round() as i32;
+    let center_y = mpos.y + ((mh - ph as f64) / 2.0).round() as i32;
     let (x, y): (i32, i32) = match placement.as_str() {
-        "left" => {
-            let y = if expanded {
-                mpos.y + (12.0 * scale) as i32
-            } else {
-                mpos.y + (msize.height as i32 - ph as i32) / 2
-            };
-            (mpos.x, y)
-        }
-        "right" => {
-            let x = mpos.x + msize.width as i32 - pw as i32;
-            let y = if expanded {
-                mpos.y + (12.0 * scale) as i32
-            } else {
-                mpos.y + (msize.height as i32 - ph as i32) / 2
-            };
-            (x, y)
-        }
-        _ => {
-            let x = mpos.x + (msize.width as i32 - pw as i32) / 2;
-            (x, mpos.y)
-        }
+        "left" => (mpos.x, center_y),
+        "right" => (mpos.x + (mw as i32 - pw as i32), center_y),
+        _ => (center_x, mpos.y),
     };
 
-    window
-        .set_size(PhysicalSize::new(pw, ph))
-        .map_err(|e| e.to_string())?;
-    window
-        .set_position(PhysicalPosition::new(x, y))
-        .map_err(|e| e.to_string())?;
+    // Position BEFORE size: moving between monitors can change the DPI, and
+    // Windows rescales a window's size on a DPI change — sizing first would get
+    // silently rewritten. Re-assert the position afterwards so the final rect is
+    // exactly what we asked for.
+    //
+    // Never use `?` here: a failed move/resize must not skip show(), or the
+    // widget would stay invisible forever with no way for the user to recover.
+    let pos = PhysicalPosition::new(x, y);
+    let mut err = None;
+    if let Err(e) = window.set_position(pos) {
+        err = Some(e.to_string());
+    }
+    if let Err(e) = window.set_size(PhysicalSize::new(pw, ph)) {
+        err = Some(e.to_string());
+    }
+    if let Err(e) = window.set_position(pos) {
+        err = Some(e.to_string());
+    }
     let _ = window.show();
+    if let Some(e) = err {
+        return Err(e);
+    }
     if expanded {
         let _ = window.set_focus();
     }

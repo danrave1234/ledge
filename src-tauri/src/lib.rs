@@ -16,6 +16,12 @@ use tauri_plugin_autostart::MacosLauncher;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Must be registered FIRST. Only one Perch may run: a second launch
+        // (autostart + a manual start, say) would otherwise dock a second
+        // handle on the same edge. Instead, focus the existing widget.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            let _ = app.emit("perch://open", ());
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
