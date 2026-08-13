@@ -9,6 +9,7 @@ import {
   setConversationTitle,
   getPersona,
   type View,
+  type UiState,
 } from "./stores";
 import { getProvider } from "./providers";
 import {
@@ -36,28 +37,34 @@ async function applyDock(expanded: boolean) {
   await dock(s.placement, expanded, s.display);
 }
 
+/** Resize the window with nothing rendered, then reveal the new content. The
+    blank gap is deliberate: the window is transparent, so it reads as a clean
+    swap instead of the panel and handle both painting at the wrong size. */
+async function resizeTo(expanded: boolean, patch: Partial<UiState> = {}) {
+  ui.update((u) => ({ ...u, ...patch, expanded, resizing: true }));
+  try {
+    await applyDock(expanded);
+  } finally {
+    ui.update((u) => ({ ...u, resizing: false }));
+  }
+}
+
 export async function redock() {
-  await applyDock(get(ui).expanded);
+  await resizeTo(get(ui).expanded);
 }
 
 export async function expand() {
-  ui.update((u) => ({ ...u, expanded: true }));
-  await applyDock(true);
+  await resizeTo(true);
 }
 
 export async function openPinned(view: View = "chat") {
-  ui.update((u) => ({ ...u, expanded: true, pinned: true, view }));
-  await applyDock(true);
+  await resizeTo(true, { pinned: true, view });
 }
 
 export async function collapse(force = false) {
   const u = get(ui);
   if (!force && (u.pinned || u.generating)) return;
-  ui.update((x) => ({ ...x, expanded: false, pinned: false }));
-  // Keep the window full-size briefly so the panel's out-transition can play
-  // before the window shrinks to the handle.
-  await new Promise((r) => setTimeout(r, 150));
-  await applyDock(false);
+  await resizeTo(false, { pinned: false });
 }
 
 export async function toggle() {

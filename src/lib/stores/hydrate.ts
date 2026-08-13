@@ -31,6 +31,13 @@ export async function hydrate(): Promise<void> {
         if (ver < 3 && (merged.handle === "spark" || merged.handle === "pill")) {
           merged.handle = "bar";
         }
+        // The mock provider is dev-only — it isn't registered in the desktop
+        // app, so a saved "mock" left the widget pointing at a provider that
+        // doesn't exist. Move those installs onto the real default.
+        if (merged.providerId === "mock" || String(merged.model).startsWith("mock")) {
+          merged.providerId = DEFAULT_SETTINGS.providerId;
+          merged.model = DEFAULT_SETTINGS.model;
+        }
         merged.schemaVersion = CURRENT_SCHEMA;
         settings.set(merged);
       }

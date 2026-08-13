@@ -8,12 +8,17 @@ export interface UiState {
   pinned: boolean;
   view: View;
   generating: boolean;
+  /** True while the native window is being resized between handle and panel.
+      Nothing is rendered during that gap — drawing either the panel or the
+      handle at the wrong window size is what caused ghost bars and flicker. */
+  resizing: boolean;
 }
 export const ui = writable<UiState>({
   expanded: false,
   pinned: false,
   view: "chat",
   generating: false,
+  resizing: false,
 });
 
 /* ---------- canvas (expandable output / image viewer) ---------- */
