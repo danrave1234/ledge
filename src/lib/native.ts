@@ -142,6 +142,34 @@ export async function codexLogin(): Promise<boolean> {
   }
 }
 
+export async function codexLoggedIn(): Promise<boolean> {
+  if (!isTauri()) return false;
+  const { invoke } = await import("@tauri-apps/api/core");
+  try {
+    return await invoke<boolean>("codex_logged_in");
+  } catch {
+    return false;
+  }
+}
+
+export async function setCaptureExclusion(enabled: boolean): Promise<void> {
+  if (!isTauri()) return;
+  const { invoke } = await import("@tauri-apps/api/core");
+  try {
+    await invoke("set_capture_exclusion", { enabled });
+  } catch {
+    /* older Windows / unsupported */
+  }
+}
+
+export async function onWindowBlur(cb: () => void): Promise<() => void> {
+  if (!isTauri()) return () => {};
+  const { getCurrentWindow } = await import("@tauri-apps/api/window");
+  return await getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+    if (!focused) cb();
+  });
+}
+
 export interface UpdateInfo {
   available: boolean;
   version?: string;

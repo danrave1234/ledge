@@ -44,6 +44,30 @@ pub fn codex_login() -> Result<bool, String> {
     Ok(true)
 }
 
+/// True if the user is signed in to Codex (via ChatGPT or API key). Lets the UI
+/// reflect a browser sign-in that completed out-of-process.
+#[tauri::command]
+pub fn codex_logged_in() -> bool {
+    // Codex stores auth in $CODEX_HOME/auth.json (default ~/.codex/auth.json).
+    let base = std::env::var("CODEX_HOME").ok().or_else(|| {
+        std::env::var("USERPROFILE")
+            .ok()
+            .map(|p| format!("{p}\\.codex"))
+            .or_else(|| std::env::var("HOME").ok().map(|p| format!("{p}/.codex")))
+    });
+    if let Some(dir) = base {
+        if std::path::Path::new(&dir).join("auth.json").exists() {
+            return true;
+        }
+    }
+    codex_command(&["login", "status"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
 /// Run a single non-interactive Codex task and stream its stdout back as deltas.
 /// Uses the user's own `codex login` (Sign in with ChatGPT), so this rides their
 /// Codex subscription through OpenAI's official tool rather than reusing tokens.
@@ -51,16 +75,23 @@ pub fn codex_login() -> Result<bool, String> {
 pub async fn codex_exec(
     prompt: String,
     model: String,
+    effort: String,
     on_event: Channel<ChatEvent>,
 ) -> Result<(), String> {
     let ev = on_event.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         let use_model = !model.is_empty() && model != "codex-default";
-        let args: Vec<&str> = if use_model {
-            vec!["exec", "--model", model.as_str(), prompt.as_str()]
-        } else {
-            vec!["exec", prompt.as_str()]
-        };
+        let effort_cfg = format!("model_reasoning_effort=\"{}\"", effort);
+        let mut args: Vec<&str> = vec!["exec"];
+        if use_model {
+            args.push("--model");
+            args.push(model.as_str());
+        }
+        if !effort.is_empty() {
+            args.push("-c");
+            args.push(effort_cfg.as_str());
+        }
+        args.push(prompt.as_str());
         let mut child = codex_command(&args)
             .stdout(Stdio::piped())
             .stderr(Stdio::null())

@@ -2,11 +2,9 @@ import type { Provider, ModelInfo, StreamOpts } from "./types";
 import { isTauri, hasApiKey } from "../native";
 
 const MODELS: ModelInfo[] = [
-  { id: "gpt-5", label: "GPT-5" },
-  { id: "gpt-5-mini", label: "GPT-5 mini" },
-  { id: "gpt-4.1", label: "GPT-4.1" },
-  { id: "o3", label: "o3 · reasoning" },
-  { id: "o4-mini", label: "o4-mini · reasoning" },
+  { id: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
+  { id: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
+  { id: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
 ];
 
 type ChatEvent =
@@ -75,9 +73,12 @@ export const openaiProvider: Provider = {
         else if (msg.type === "error") fail(msg.message);
       };
       opts.signal?.addEventListener("abort", done);
-      invoke("openai_stream", { model: opts.model, messages, onEvent: channel }).catch(
-        (e) => fail(String(e)),
-      );
+      invoke("openai_stream", {
+        model: opts.model,
+        messages,
+        effort: opts.effort ?? "",
+        onEvent: channel,
+      }).catch((e) => fail(String(e)));
     });
   },
 };

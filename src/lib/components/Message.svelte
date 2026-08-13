@@ -2,7 +2,7 @@
   import type { Msg } from "../types";
   import { renderMd } from "../md";
   import { openExternal } from "../native";
-  import { openCanvas, reopenLogin } from "../stores";
+  import { openCanvas, reopenLogin, openImage } from "../stores";
   import { tick } from "svelte";
   import { fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
@@ -117,9 +117,13 @@
 <div class="msg {msg.role}" in:fly={{ y: 10, duration: 200, easing: cubicOut }}>
   {#if msg.role === "user"}
     <div class="bubble user">{msg.content}</div>
-    {#if msg.usedScreen || msg.usedWeb}
+    {#if msg.usedScreen || msg.usedWeb || msg.image}
       <div class="tags">
-        {#if msg.usedScreen}<span><Icon name="screen" size={12} /> screen</span>{/if}
+        {#if msg.image}
+          <button class="viewbtn" onclick={() => openImage(msg.image!)}>
+            <Icon name="screen" size={12} /> view {msg.usedScreen ? "screen" : "image"}
+          </button>
+        {/if}
         {#if msg.usedWeb}<span><Icon name="web" size={12} /> web</span>{/if}
       </div>
     {/if}
@@ -198,6 +202,22 @@
     gap: 3px;
     font-size: 11px;
     color: var(--text-3);
+  }
+  .viewbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--accent-text);
+    background: var(--accent-weak);
+    border: none;
+    border-radius: 999px;
+    padding: 3px 9px;
+    cursor: pointer;
+  }
+  .viewbtn:hover {
+    background: var(--accent);
+    color: var(--accent-on);
   }
   .prose :global(p) {
     margin: 0 0 8px;

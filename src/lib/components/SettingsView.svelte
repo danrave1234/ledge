@@ -23,6 +23,7 @@
     checkForUpdates,
     installUpdate,
     codexLogin,
+    codexLoggedIn,
   } from "../native";
   import { stop } from "../controller";
   import type { Placement, HandleStyle, ThemeMode } from "../types";
@@ -141,11 +142,29 @@
   async function doCodexLogin() {
     codexBusy = true;
     codexMsg = "";
+    if (await codexLoggedIn()) {
+      codexMsg = "Signed in to Codex ✓";
+      codexBusy = false;
+      return;
+    }
     const ok = await codexLogin();
+    if (!ok) {
+      codexMsg = "Codex CLI not found — install it: npm i -g @openai/codex";
+      codexBusy = false;
+      return;
+    }
+    codexMsg = "Opening sign-in in your browser…";
+    for (let i = 0; i < 45; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      if (await codexLoggedIn()) {
+        updateSettings({ providerId: "codex", model: "gpt-5.6-sol" });
+        codexMsg = "Signed in to Codex ✓";
+        codexBusy = false;
+        return;
+      }
+    }
     codexBusy = false;
-    codexMsg = ok
-      ? "Opening Codex sign-in in your browser…"
-      : "Codex CLI not found — install it first: npm i -g @openai/codex";
+    codexMsg = "Not detected yet — finish sign-in, then click again.";
   }
 
   // plugins (install-to-enable)

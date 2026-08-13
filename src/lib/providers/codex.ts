@@ -3,10 +3,9 @@ import { isTauri } from "../native";
 
 const MODELS: ModelInfo[] = [
   { id: "codex-default", label: "Codex default" },
-  { id: "gpt-5-codex", label: "GPT-5 Codex" },
-  { id: "gpt-5", label: "GPT-5" },
-  { id: "o3", label: "o3 · reasoning" },
-  { id: "o4-mini", label: "o4-mini · reasoning" },
+  { id: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
+  { id: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
+  { id: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
 ];
 
 type ChatEvent =
@@ -27,7 +26,7 @@ export const codexProvider: Provider = {
     if (!isTauri()) return false;
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      return await invoke<boolean>("codex_available");
+      return await invoke<boolean>("codex_logged_in");
     } catch {
       return false;
     }
@@ -41,6 +40,12 @@ export const codexProvider: Provider = {
     if (!available) {
       throw new Error(
         "Codex CLI not found. Install it (npm i -g @openai/codex) and run `codex login`, then reopen Perch.",
+      );
+    }
+    const loggedIn = await invoke<boolean>("codex_logged_in").catch(() => false);
+    if (!loggedIn) {
+      throw new Error(
+        "Not signed in to Codex. Use the Sign in button (or run `codex login`), then try again.",
       );
     }
 
@@ -72,9 +77,12 @@ export const codexProvider: Provider = {
         else if (msg.type === "error") fail(msg.message);
       };
       opts.signal?.addEventListener("abort", done);
-      invoke("codex_exec", { prompt, model: opts.model ?? "", onEvent: channel }).catch(
-        (e) => fail(String(e)),
-      );
+      invoke("codex_exec", {
+        prompt,
+        model: opts.model ?? "",
+        effort: opts.effort ?? "",
+        onEvent: channel,
+      }).catch((e) => fail(String(e)));
     });
   },
 };

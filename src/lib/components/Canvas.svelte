@@ -15,15 +15,21 @@
 {#if c.open}
   <div class="canvas" transition:fly={{ y: 12, duration: 160 }}>
     <div class="chead">
-      <Icon name="stack" size={15} />
+      <Icon name={c.image ? "screen" : "stack"} size={15} />
       <span class="clang">{c.lang}</span>
       <span class="cspace"></span>
-      <button class="cbtn" onclick={copy}>{copied ? "Copied" : "Copy"}</button>
+      {#if !c.image}
+        <button class="cbtn" onclick={copy}>{copied ? "Copied" : "Copy"}</button>
+      {/if}
       <button class="icon-btn" aria-label="Close canvas" onclick={closeCanvas}>
         <Icon name="x" size={16} />
       </button>
     </div>
-    <pre class="cbody"><code>{c.code}</code></pre>
+    {#if c.image}
+      <div class="cimg"><img src={c.image} alt="screen capture" /></div>
+    {:else}
+      <pre class="cbody"><code>{c.code}</code></pre>
+    {/if}
   </div>
 {/if}
 
@@ -78,5 +84,18 @@
     color: var(--text);
     user-select: text;
     white-space: pre;
+  }
+  .cimg {
+    flex: 1;
+    overflow: auto;
+    padding: 12px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  .cimg img {
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
   }
 </style>

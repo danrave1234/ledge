@@ -12,7 +12,9 @@
     setGameMode,
     clearCache,
     checkForUpdates,
+    onWindowBlur,
   } from "$lib/native";
+  import { fade } from "svelte/transition";
 
   let expanded = $derived($ui.expanded);
   const tauri = isTauri();
@@ -46,6 +48,7 @@
 
   onMount(() => {
     let cleanup = () => {};
+    let unblur = () => {};
     (async () => {
       // Show the widget first so persistence issues can never block startup.
       if (preview) {
@@ -94,8 +97,20 @@
           .then((u) => u.available && updateAvailable.set(true))
           .catch(() => {});
       }
+
+      // Click outside the widget → minimize, unless pinned or generating.
+      if (!preview) {
+        try {
+          unblur = await onWindowBlur(() => collapse());
+        } catch (e) {
+          console.error("blur listen failed", e);
+        }
+      }
     })();
-    return () => cleanup();
+    return () => {
+      cleanup();
+      unblur();
+    };
   });
 
   // React to settings changes (guarded so unrelated toggles don't thrash).
@@ -121,7 +136,7 @@
 
 <div class="root" role="presentation" onmouseenter={onEnter} onmouseleave={onLeave}>
   {#if expanded}
-    <div class="shell" class:preview>
+    <div class="shell" class:preview transition:fade={{ duration: 150 }}>
       <Panel />
     </div>
   {:else}
@@ -137,7 +152,6 @@
   .shell {
     width: 100%;
     height: 100%;
-    animation: pop 0.22s cubic-bezier(0.2, 0.85, 0.25, 1);
   }
   .shell.preview {
     position: absolute;
@@ -146,14 +160,5 @@
     transform: translateX(-50%);
     width: 640px;
     height: 460px;
-  }
-  @keyframes pop {
-    from {
-      opacity: 0;
-      transform: translateY(-10px) scale(0.99);
-    }
-  }
-  .shell.preview {
-    animation: none;
   }
 </style>
