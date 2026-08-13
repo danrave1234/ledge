@@ -68,6 +68,25 @@ pub fn codex_logged_in() -> bool {
         .unwrap_or(false)
 }
 
+/// Sign out of Codex: run `codex logout` and remove the stored auth file.
+#[tauri::command]
+pub fn codex_logout() -> Result<(), String> {
+    let _ = codex_command(&["logout"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    let base = std::env::var("CODEX_HOME").ok().or_else(|| {
+        std::env::var("USERPROFILE")
+            .ok()
+            .map(|p| format!("{p}\\.codex"))
+            .or_else(|| std::env::var("HOME").ok().map(|p| format!("{p}/.codex")))
+    });
+    if let Some(dir) = base {
+        let _ = std::fs::remove_file(std::path::Path::new(&dir).join("auth.json"));
+    }
+    Ok(())
+}
+
 /// Run a single non-interactive Codex task and stream its stdout back as deltas.
 /// Uses the user's own `codex login` (Sign in with ChatGPT), so this rides their
 /// Codex subscription through OpenAI's official tool rather than reusing tokens.

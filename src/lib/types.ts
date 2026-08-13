@@ -15,6 +15,7 @@ export interface Msg {
 export interface Conversation {
   id: string;
   title: string;
+  titled?: boolean; // true once an AI-generated title is set
   messages: Msg[];
   createdAt: number;
   updatedAt: number;

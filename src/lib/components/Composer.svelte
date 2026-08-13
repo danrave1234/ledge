@@ -45,9 +45,6 @@
       submit();
     }
   }
-  function pin() {
-    ui.update((u) => ({ ...u, pinned: true }));
-  }
   function onFile(e: Event) {
     const input = e.target as HTMLInputElement;
     const f = input.files?.[0];
@@ -75,7 +72,6 @@
       bind:value={text}
       oninput={autosize}
       onkeydown={onKey}
-      onfocus={pin}
       rows="1"
       placeholder="Message your assistant…"></textarea>
     {#if generating}

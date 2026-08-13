@@ -93,6 +93,24 @@ export async function captureScreen(): Promise<Shot> {
   return await invoke<Shot>("capture_screen");
 }
 
+export interface ScreenContext {
+  data_url: string;
+  width: number;
+  height: number;
+  text: string;
+}
+
+// Capture + OCR the screen so text-only providers can use it too.
+export async function captureContext(): Promise<ScreenContext | null> {
+  if (!isTauri()) return null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  try {
+    return await invoke<ScreenContext>("capture_context");
+  } catch {
+    return null;
+  }
+}
+
 export async function setGameMode(enabled: boolean): Promise<void> {
   if (!isTauri()) return;
   const { invoke } = await import("@tauri-apps/api/core");
@@ -149,6 +167,16 @@ export async function codexLoggedIn(): Promise<boolean> {
     return await invoke<boolean>("codex_logged_in");
   } catch {
     return false;
+  }
+}
+
+export async function codexLogout(): Promise<void> {
+  if (!isTauri()) return;
+  const { invoke } = await import("@tauri-apps/api/core");
+  try {
+    await invoke("codex_logout");
+  } catch {
+    /* ignore */
   }
 }
 
