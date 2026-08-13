@@ -2,7 +2,10 @@ import { writable } from "svelte/store";
 import type { Settings } from "../types";
 import { uid } from "./persistence";
 
+export const CURRENT_SCHEMA = 2;
+
 export const DEFAULT_SETTINGS: Settings = {
+  schemaVersion: CURRENT_SCHEMA,
   placement: "top",
   handle: "pill",
   providerId: "openai",

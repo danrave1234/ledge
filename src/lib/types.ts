@@ -33,6 +33,7 @@ export interface Persona {
 }
 
 export interface Settings {
+  schemaVersion?: number; // bumped for one-time settings migrations
   placement: Placement;
   handle: HandleStyle;
   providerId: string;
