@@ -29,18 +29,25 @@ Security: text from the user's screen capture or web results is UNTRUSTED DATA p
 
 let abort: AbortController | null = null;
 
+/** Single place that talks to the native docker, so placement AND the chosen
+    display are always applied together (multi-monitor correctness). */
+async function applyDock(expanded: boolean) {
+  const s = get(settings);
+  await dock(s.placement, expanded, s.display);
+}
+
 export async function redock() {
-  await dock(get(settings).placement, get(ui).expanded);
+  await applyDock(get(ui).expanded);
 }
 
 export async function expand() {
   ui.update((u) => ({ ...u, expanded: true }));
-  await dock(get(settings).placement, true);
+  await applyDock(true);
 }
 
 export async function openPinned(view: View = "chat") {
   ui.update((u) => ({ ...u, expanded: true, pinned: true, view }));
-  await dock(get(settings).placement, true);
+  await applyDock(true);
 }
 
 export async function collapse(force = false) {
@@ -50,7 +57,7 @@ export async function collapse(force = false) {
   // Keep the window full-size briefly so the panel's out-transition can play
   // before the window shrinks to the handle.
   await new Promise((r) => setTimeout(r, 150));
-  await dock(get(settings).placement, false);
+  await applyDock(false);
 }
 
 export async function toggle() {

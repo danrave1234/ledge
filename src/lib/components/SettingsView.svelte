@@ -25,6 +25,8 @@
     codexLogin,
     codexLoggedIn,
     codexLogout,
+    listMonitors,
+    type MonitorInfo,
   } from "../native";
   import { stop } from "../controller";
   import type { Placement, HandleStyle, ThemeMode } from "../types";
@@ -48,10 +50,9 @@
     { v: "right", l: "Right" },
   ];
   const handles: { v: HandleStyle; l: string }[] = [
-    { v: "pill", l: "Pill" },
+    { v: "bar", l: "Bar" },
     { v: "spark", l: "Spark" },
     { v: "pulse", l: "Pulse" },
-    { v: "bar", l: "Bar" },
   ];
   const themes: { v: ThemeMode; l: string }[] = [
     { v: "system", l: "System" },
@@ -64,9 +65,11 @@
   let keyInput = $state("");
   let connected = $state(false);
   let codexIn = $state(false);
+  let monitors = $state<MonitorInfo[]>([]);
   onMount(async () => {
     connected = await hasApiKey();
     codexIn = await codexLoggedIn();
+    monitors = await listMonitors();
   });
   async function saveKey() {
     await saveApiKey(keyInput);
@@ -231,6 +234,20 @@
               <button class:on={s.placement === p.v} onclick={() => updateSettings({ placement: p.v })}>{p.l}</button>
             {/each}
           </div>
+          {#if monitors.length > 1}
+            <label class="lbl">Display</label>
+            <div class="seg">
+              {#each monitors as m}
+                <button
+                  class:on={(s.display ?? -1) === m.index}
+                  onclick={() => updateSettings({ display: m.index })}
+                  title="{m.name} — {m.width}×{m.height}">
+                  {m.primary ? "Main" : `Display ${m.index + 1}`}
+                </button>
+              {/each}
+            </div>
+            <p class="note" style="margin-top:6px">Which screen the widget docks to.</p>
+          {/if}
           <label class="lbl">Handle style</label>
           <div class="seg">
             {#each handles as h}
