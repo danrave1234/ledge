@@ -28,13 +28,32 @@ async function tryCmd<T>(
   }
 }
 
-export async function dock(placement: Placement, expanded: boolean): Promise<void> {
+export async function dock(
+  placement: Placement,
+  expanded: boolean,
+  display?: number,
+): Promise<void> {
   if (!isTauri()) return;
   try {
-    await cmd("dock_window", { placement, expanded });
+    await cmd("dock_window", { placement, expanded, display });
   } catch (e) {
     console.error("dock_window failed", e);
   }
+}
+
+export interface MonitorInfo {
+  index: number;
+  name: string;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  primary: boolean;
+}
+
+/** Connected displays, so the user can pick which one the widget docks to. */
+export async function listMonitors(): Promise<MonitorInfo[]> {
+  return tryCmd<MonitorInfo[]>("list_monitors", []);
 }
 
 export async function showPanel(): Promise<void> {

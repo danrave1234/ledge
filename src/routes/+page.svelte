@@ -23,6 +23,7 @@
   let expandedAt = 0;
 
   let lastPlacement = "";
+  let lastDisplay: number | undefined = undefined;
   let lastHotkey = "";
   let lastAutostart: boolean | null = null;
   let lastGameMode: boolean | null = null;
@@ -125,8 +126,14 @@
       lastHotkey = s.hotkey;
       registerHotkey(s.hotkey, () => toggle());
     }
-    if (lastPlacement && s.placement !== lastPlacement) redock();
+    if (
+      (lastPlacement && s.placement !== lastPlacement) ||
+      (lastDisplay !== undefined && s.display !== lastDisplay)
+    ) {
+      redock();
+    }
     lastPlacement = s.placement;
+    lastDisplay = s.display;
     if (s.gameMode !== lastGameMode) {
       lastGameMode = s.gameMode;
       setGameMode(s.gameMode);

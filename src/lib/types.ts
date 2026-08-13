@@ -22,7 +22,7 @@ export interface Conversation {
 }
 
 export type Placement = "top" | "left" | "right";
-export type HandleStyle = "pill" | "spark" | "pulse" | "bar";
+export type HandleStyle = "bar" | "spark" | "pulse";
 export type ThemeMode = "system" | "light" | "dark";
 
 export interface Persona {
@@ -35,6 +35,7 @@ export interface Persona {
 export interface Settings {
   schemaVersion?: number; // bumped for one-time settings migrations
   placement: Placement;
+  display?: number; // chosen monitor index (multi-monitor); undefined = auto
   handle: HandleStyle;
   providerId: string;
   model: string;

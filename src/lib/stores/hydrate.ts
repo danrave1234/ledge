@@ -25,9 +25,11 @@ export async function hydrate(): Promise<void> {
       if (parsed && typeof parsed === "object") {
         const merged = { ...DEFAULT_SETTINGS, ...parsed };
         // One-time upgrades for settings written by older builds.
-        if ((parsed.schemaVersion ?? 1) < 2) {
-          // v1 → v2: the idle handle default became the OPPO-style pill.
-          if (parsed.handle === "spark") merged.handle = "pill";
+        const ver = parsed.schemaVersion ?? 1;
+        // The idle-handle default is now the thin bar; retire the old
+        // spark-square and the short-lived pill in favor of it.
+        if (ver < 3 && (merged.handle === "spark" || merged.handle === "pill")) {
+          merged.handle = "bar";
         }
         merged.schemaVersion = CURRENT_SCHEMA;
         settings.set(merged);

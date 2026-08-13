@@ -26,6 +26,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             window::dock_window,
+            window::list_monitors,
             window::show_panel,
             window::hide_panel,
             window::set_game_mode,

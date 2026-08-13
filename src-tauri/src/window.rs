@@ -12,12 +12,72 @@ fn target_monitor(win: &WebviewWindow) -> Option<Monitor> {
         .and_then(|v| v.into_iter().next())
 }
 
+/// Pick the monitor the widget should dock to. When the user has chosen a
+/// specific display we honor that index; otherwise fall back to the monitor the
+/// window is on (or primary). Explicit selection is what makes docking — and the
+/// hover strip — land on the right screen in multi-monitor setups.
+fn pick_monitor(win: &WebviewWindow, display: Option<usize>) -> Option<Monitor> {
+    if let Some(i) = display {
+        if let Ok(mons) = win.available_monitors() {
+            if let Some(m) = mons.into_iter().nth(i) {
+                return Some(m);
+            }
+        }
+    }
+    target_monitor(win)
+}
+
+#[derive(serde::Serialize)]
+pub struct MonitorInfo {
+    pub index: usize,
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+    pub x: i32,
+    pub y: i32,
+    pub primary: bool,
+}
+
+/// Enumerate connected displays so the user can choose where the widget lives.
+#[tauri::command]
+pub fn list_monitors(window: WebviewWindow) -> Result<Vec<MonitorInfo>, String> {
+    let primary_name = window
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .and_then(|m| m.name().cloned());
+    let mons = window.available_monitors().map_err(|e| e.to_string())?;
+    Ok(mons
+        .into_iter()
+        .enumerate()
+        .map(|(i, m)| {
+            let pos = *m.position();
+            let size = *m.size();
+            let name = m.name().cloned();
+            MonitorInfo {
+                index: i,
+                primary: name.is_some() && name == primary_name,
+                name: name.unwrap_or_else(|| format!("Display {}", i + 1)),
+                width: size.width,
+                height: size.height,
+                x: pos.x,
+                y: pos.y,
+            }
+        })
+        .collect())
+}
+
 /// Position + size the widget window against a screen edge.
 /// `placement` is one of "top" | "left" | "right".
 /// When `expanded` is false the window shrinks to the small textless handle.
 #[tauri::command]
-pub fn dock_window(window: WebviewWindow, placement: String, expanded: bool) -> Result<(), String> {
-    let mon = target_monitor(&window).ok_or("no monitor available")?;
+pub fn dock_window(
+    window: WebviewWindow,
+    placement: String,
+    expanded: bool,
+    display: Option<usize>,
+) -> Result<(), String> {
+    let mon = pick_monitor(&window, display).ok_or("no monitor available")?;
     let scale = mon.scale_factor();
     let mpos = *mon.position();
     let msize = *mon.size();
@@ -29,9 +89,12 @@ pub fn dock_window(window: WebviewWindow, placement: String, expanded: bool) -> 
             _ => (640.0, 460.0),
         }
     } else {
+        // Collapsed: a wide, thin hover strip. The visible handle is small, but the
+        // window must be big enough to actually catch the pointer — a 76x22 target
+        // was easy to miss, which is why hover-open felt broken.
         match placement.as_str() {
-            "left" | "right" => (22.0, 76.0),
-            _ => (76.0, 22.0),
+            "left" | "right" => (14.0, 180.0),
+            _ => (180.0, 14.0),
         }
     };
     let pw = (w_l * scale).round() as u32;
