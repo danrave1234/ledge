@@ -216,7 +216,7 @@ fn ocr_rgba(img: RgbaImage) -> Option<String> {
     let w = img.width() as i32;
     let h = img.height() as i32;
     let mut bgra = img.into_raw();
-    for px in bgra.chunks_exact_mut(4) {
+    for px in bgra.as_chunks_mut::<4>().0 {
         px.swap(0, 2); // RGBA -> BGRA
     }
     let buffer = CryptographicBuffer::CreateFromByteArray(&bgra).ok()?;
