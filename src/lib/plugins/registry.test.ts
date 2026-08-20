@@ -1,0 +1,140 @@
+import { describe, it, expect } from "vitest";
+import {
+  PLUGIN_MODULES,
+  allPluginTools,
+  allPluginCards,
+  pluginContexts,
+} from "./registry";
+import { BUILTIN_PLUGINS } from "../plugins";
+import { DEFAULT_SETTINGS } from "../stores/settings";
+import { availableTools } from "../tools";
+import type { Settings, TurnConsent } from "../types";
+
+function settingsWith(patch: Partial<Settings> = {}): Settings {
+  return { ...DEFAULT_SETTINGS, ...patch };
+}
+
+const none: TurnConsent = { web: false, screen: false, music: false };
+const all: TurnConsent = { web: true, screen: true, music: true };
+
+describe("plugin registry", () => {
+  it("only registers modules that exist in the catalog", () => {
+    // The catalog owns the display copy; a module for an id Settings never
+    // lists would contribute tools no one could turn off.
+    const ids = new Set(BUILTIN_PLUGINS.map((p) => p.id));
+    for (const m of PLUGIN_MODULES) expect(ids.has(m.id)).toBe(true);
+  });
+
+  it("gives every tool a pluginId matching the module that contributes it", () => {
+    for (const m of PLUGIN_MODULES) {
+      for (const t of m.tools ?? []) expect(t.pluginId).toBe(m.id);
+    }
+  });
+
+  it("exposes no duplicate tool names", () => {
+    // `runTool` resolves by name, so a collision would silently shadow one.
+    const names = allPluginTools().map((t) => t.spec.name);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("exposes no duplicate card types", () => {
+    const types = PLUGIN_MODULES.flatMap((m) => Object.keys(m.cards ?? {}));
+    expect(new Set(types).size).toBe(types.length);
+  });
+
+  it("registers a renderer for every card type a tool can attach", () => {
+    // A tool attaching a card no renderer knows would produce a message that
+    // silently drops its own interactive half.
+    expect(allPluginCards()).toHaveProperty("now_playing");
+  });
+
+  it("gives every tool a capability phrase", () => {
+    // Without one the model is never told the ability exists, so it hedges or
+    // refuses instead of calling the tool.
+    for (const t of allPluginTools()) expect(t.capability?.trim()).toBeTruthy();
+  });
+});
+
+describe("gating through the registry", () => {
+  it("offers nothing on default settings", () => {
+    // Core plugins are installed but their consent toggles are off, and the
+    // optional ones are not installed at all.
+    expect(availableTools(settingsWith(), none)).toEqual([]);
+  });
+
+  it("offers a tool only once BOTH its plugin and its toggle are on", () => {
+    expect(
+      availableTools(settingsWith(), { ...none, web: true }).map((t) => t.spec.name),
+    ).toEqual(["web_search"]);
+    expect(
+      availableTools(settingsWith({ plugins: { "web-search": false } }), {
+        ...none,
+        web: true,
+      }),
+    ).toEqual([]);
+  });
+
+  it("keeps music's read tool separate from its control tool", () => {
+    const installed = settingsWith({ installedPlugins: ["music"] });
+    expect(availableTools(installed, none).map((t) => t.spec.name)).toEqual([
+      "music_now_playing",
+    ]);
+
+    // Full consent adds transport control, and YouTube — which needs no
+    // account, only a browser. The SPOTIFY tools stay out: they need a
+    // connected account on top of all this, and nothing has connected one here.
+    const consented = settingsWith({
+      installedPlugins: ["music"],
+      musicConfirmed: true,
+    });
+    const names = availableTools(consented, all).map((t) => t.spec.name);
+    expect(names).toContain("music_control");
+    expect(names).toContain("music_play_youtube");
+    expect(names).not.toContain("music_play");
+    expect(names).not.toContain("music_search");
+  });
+});
+
+describe("plugin context blocks", () => {
+  it("contributes nothing when no plugin is active", () => {
+    expect(pluginContexts(settingsWith(), none)).toEqual([]);
+  });
+
+  it("warns the model when it has no way to start a specific track", () => {
+    // The failure this guards: the model accepts "play my Discover Weekly" and
+    // then does nothing, because transport control only drives an already
+    // loaded track and no service is connected to start a new one.
+    const text = pluginContexts(settingsWith({ installedPlugins: ["music"] }), none).join(
+      "\n",
+    );
+    expect(text).toMatch(/Spotify is NOT connected/i);
+    expect(text).toMatch(/only control what is already playing/i);
+  });
+
+  it("never promises YouTube playback started, since browsers block autoplay", () => {
+    const text = pluginContexts(
+      settingsWith({ installedPlugins: ["music"], musicConfirmed: true }),
+      all,
+    ).join("\n");
+    expect(text).toMatch(/not guaranteed to start/i);
+    expect(text).toMatch(
+      /only say it is playing when the tool result says it was confirmed/i,
+    );
+  });
+
+  it("tells the model when playback control is off, and how to enable it", () => {
+    const readOnly = pluginContexts(
+      settingsWith({ installedPlugins: ["music"] }),
+      none,
+    ).join("\n");
+    expect(readOnly).toMatch(/only READ/);
+    expect(readOnly).toMatch(/Music toggle/);
+
+    const full = pluginContexts(
+      settingsWith({ installedPlugins: ["music"], musicConfirmed: true }),
+      all,
+    ).join("\n");
+    expect(full).toMatch(/play, pause, skip, and seek/i);
+    expect(full).not.toMatch(/only READ/);
+  });
+});

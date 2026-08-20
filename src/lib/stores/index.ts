@@ -1,14 +1,15 @@
-/* Barrel: keep `import … from "../stores"` working everywhere while the
-   implementation is organized by domain (persistence, settings, ui, …). */
-export { uid, cacheClearSafe } from "./persistence";
+/* Barrel: components import everything store-shaped from `$lib/stores`, while
+   the implementation stays split by domain (persistence, settings, ui, …). */
+export { uid, cacheClearSafe, flushWrites } from "./persistence";
 export {
-  DEFAULT_SETTINGS,
   settings,
   updateSettings,
+  setProvider,
+  selectModel,
+  setFetchedModels,
   togglePlugin,
   installPlugin,
   uninstallPlugin,
-  fetchedModels,
   addCustomModel,
   removeCustomModel,
   addMemory,
@@ -18,10 +19,13 @@ export {
   completeOnboarding,
   reopenLogin,
 } from "./settings";
+export { providerAuth, refreshProviderAuth, FALLBACK_PROVIDER_ID } from "./auth";
+export { justUpdatedFrom, reconcileVersion } from "./version";
 export {
   type View,
   type UiState,
   ui,
+  setSettingsSection,
   canvas,
   openCanvas,
   openImage,
@@ -35,15 +39,11 @@ export {
   newChat,
   saveActive,
   setConversationTitle,
+  setConversationSummary,
+  activeSummary,
   openConversation,
   deleteConversation,
   clearHistory,
 } from "./conversations";
-export {
-  customPersonas,
-  allPersonas,
-  getPersona,
-  upsertPersona,
-  deletePersona,
-} from "./personas";
-export { hydrate } from "./hydrate";
+export { customPersonas, getPersona, upsertPersona, deletePersona } from "./personas";
+export { hydrate, hydrationReady } from "./hydrate";

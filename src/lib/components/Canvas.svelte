@@ -1,27 +1,47 @@
 <script lang="ts">
-  import Icon from "./Icon.svelte";
-  import { canvas, closeCanvas } from "../stores";
-  import { fade, fly } from "svelte/transition";
+  import Icon from "$lib/components/Icon.svelte";
+  import { canvas, closeCanvas } from "$lib/stores";
+  import { DUR } from "$lib/motion";
+  import { fly } from "svelte/transition";
+
+  const COPIED_MS = 1400;
 
   let c = $derived($canvas);
   let copied = $state(false);
+  let closeButton: HTMLButtonElement | undefined = $state();
+  $effect(() => {
+    if (c.open) queueMicrotask(() => closeButton?.focus());
+  });
   function copy() {
     navigator.clipboard?.writeText(c.code);
     copied = true;
-    setTimeout(() => (copied = false), 1400);
+    setTimeout(() => (copied = false), COPIED_MS);
   }
 </script>
 
 {#if c.open}
-  <div class="canvas" transition:fly={{ y: 12, duration: 160 }}>
+  <div
+    class="canvas"
+    role="dialog"
+    tabindex="-1"
+    aria-modal="true"
+    aria-label={c.image ? "Screen capture" : "Code canvas"}
+    onkeydown={(e) => e.key === "Escape" && closeCanvas()}
+    transition:fly={{ y: 12, duration: DUR }}
+  >
     <div class="chead">
       <Icon name={c.image ? "screen" : "stack"} size={15} />
       <span class="clang">{c.lang}</span>
       <span class="cspace"></span>
       {#if !c.image}
-        <button class="cbtn" onclick={copy}>{copied ? "Copied" : "Copy"}</button>
+        <button class="btn btn-sm" onclick={copy}>{copied ? "Copied" : "Copy"}</button>
       {/if}
-      <button class="icon-btn" aria-label="Close canvas" onclick={closeCanvas}>
+      <button
+        bind:this={closeButton}
+        class="icon-btn"
+        aria-label="Close canvas"
+        onclick={closeCanvas}
+      >
         <Icon name="x" size={16} />
       </button>
     </div>
@@ -37,7 +57,7 @@
   .canvas {
     position: absolute;
     inset: 0;
-    z-index: 30;
+    z-index: var(--z-overlay);
     background: var(--surface);
     display: flex;
     flex-direction: column;
@@ -51,7 +71,7 @@
     flex-shrink: 0;
   }
   .clang {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--text-2);
     font-family: var(--mono);
     text-transform: uppercase;
@@ -60,26 +80,13 @@
   .cspace {
     flex: 1;
   }
-  .cbtn {
-    border: 1px solid var(--border-2);
-    background: var(--surface);
-    color: var(--text);
-    font-size: 12px;
-    padding: 5px 11px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  .cbtn:hover {
-    background: var(--surface-2);
-  }
   .cbody {
     flex: 1;
     overflow: auto;
     margin: 0;
     padding: 14px;
     font-family: var(--mono);
-    font-size: 12.5px;
+    font-size: var(--fs-sm);
     line-height: 1.6;
     color: var(--text);
     user-select: text;
@@ -95,7 +102,7 @@
   }
   .cimg img {
     max-width: 100%;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border);
   }
 </style>

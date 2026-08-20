@@ -6,11 +6,26 @@ const MODELS: ModelInfo[] = [
 ];
 
 function composeReply(opts: StreamOpts): string {
-  const last =
-    [...opts.messages].reverse().find((m) => m.role === "user")?.content ?? "";
+  const last = [...opts.messages].reverse().find((m) => m.role === "user")?.content ?? "";
   const parts: string[] = [];
 
-  if (opts.web) parts.push("_Searched the web for a moment…_\n\n");
+  // Mirror how a real model answers with web results: cite inline with the
+  // bracketed numbers of the sources it was given, so the citation UI is
+  // exercisable in the browser preview. Sources arrive in the system prompt on
+  // the pre-fetch path and in tool results on the tool path — count both, or
+  // the preview claims it found nothing while showing a source list.
+  const cited = (
+    [opts.system, ...opts.messages.filter((m) => m.role === "tool").map((m) => m.content)]
+      .join("\n")
+      .match(/^\[(\d+)\]/gm) ?? []
+  ).length;
+  if (opts.web) {
+    parts.push(
+      cited
+        ? `Here's what the web says [1]${cited > 1 ? ", with a second source agreeing [2]" : ""}.\n\n`
+        : "_Searched the web, but found nothing usable._\n\n",
+    );
+  }
 
   if (/\b(job|apply|applicable|resume|résumé|cv|role|position)\b/i.test(last)) {
     parts.push(
@@ -26,11 +41,9 @@ function composeReply(opts: StreamOpts): string {
         "- ⚠️ Team lead experience — you can frame your mentoring here\n\n" +
         "**My call: apply.** The gaps are learnable and the core stack is right in your wheelhouse. Want me to draft a tailored cover letter?",
     );
-  } else if (
-    /\b(code|function|script|example|snippet|regex|component)\b/i.test(last)
-  ) {
+  } else if (/\b(code|function|script|example|snippet|regex|component)\b/i.test(last)) {
     parts.push(
-      "Here's a quick example:\n\n```ts\nfunction greet(name: string): string {\n  return `Hello, ${name}!`;\n}\n\nconsole.log(greet(\"world\"));\n```\n\nThat logs a greeting. Hit **Expand** on the block to open it in the canvas.",
+      'Here\'s a quick example:\n\n```ts\nfunction greet(name: string): string {\n  return `Hello, ${name}!`;\n}\n\nconsole.log(greet("world"));\n```\n\nThat logs a greeting. Hit **Expand** on the block to open it in the canvas.',
     );
   } else if (last.trim().length === 0) {
     parts.push(
@@ -50,14 +63,33 @@ function composeReply(opts: StreamOpts): string {
 export const mockProvider: Provider = {
   id: "mock",
   label: "Mock (offline demo)",
-  requiresAuth: false,
+  defaultModel: MODELS[0].id,
   async listModels() {
     return MODELS;
   },
   async isAuthed() {
-    return true;
+    return true; // offline demo — nothing to authenticate
   },
+  // The mock drives the real tool loop so it can be exercised in the browser
+  // preview, with no API key and no cost.
+  supportsTools: true,
   async stream(opts: StreamOpts) {
+    // First pass with a search tool available: ask for it, the way a real model
+    // would. Second pass (tool results present) answers normally.
+    const canSearch = opts.tools?.some((t) => t.name === "web_search");
+    const alreadyRan = opts.messages.some((m) => m.role === "tool");
+    if (canSearch && !alreadyRan && opts.onToolCalls) {
+      const last = [...opts.messages].reverse().find((m) => m.role === "user");
+      opts.onToolCalls([
+        {
+          id: "mock-call-1",
+          name: "web_search",
+          arguments: JSON.stringify({ query: last?.content ?? "" }),
+        },
+      ]);
+      return;
+    }
+
     const text = composeReply(opts);
     const tokens = text.split(/(\s+)/);
     for (const tk of tokens) {

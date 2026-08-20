@@ -29,4 +29,13 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+
+  test: {
+    // Unit tests cover pure logic (migrations, formatting, plugin gating,
+    // theming). jsdom is needed because the theme layer writes CSS variables
+    // onto the document element.
+    environment: "jsdom",
+    include: ["src/**/*.test.ts"],
+    restoreMocks: true,
+  },
 }));
