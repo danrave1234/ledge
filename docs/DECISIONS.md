@@ -96,18 +96,23 @@ For the same reason the "used screen / used web" badges are set from tools that
 actually ran, not from the toggles. The system prompt also forbids claiming a
 search or a look at the screen that didn't happen.
 
-## Computer control prepares text; the user performs the consequential action
+## Computer control previews bounded actions; the user approves execution
 
-The optional Computer control plugin exposes one model tool:
-`prepare_text_insertion`. Calling it creates a card with the exact text and target
-window; it does not type anything. The user must explicitly press Insert, after
-which Rust revalidates and focuses the same tracked window before sending Unicode
-input.
+The Computer control plugin exposes separate tools for text insertion, browser
+navigation, and bounded visual action plans. Every tool creates a card with the target
+window and exact proposed operation; it does not act. The user must explicitly approve,
+after which Rust revalidates and focuses the same tracked window before sending input.
 
-The boundary is intentionally narrow. Perch has no commands for clicks, Send,
-Submit, uploads, arbitrary shortcuts, or elevated windows. Inserting a draft and
-committing it are separate trust decisions, so broader desktop automation must not
-be smuggled into this tool.
+The visual plan is limited to 12 steps and supports normalized in-window clicks,
+Unicode text, common navigation keys, and bounded scrolling. It is intended for visible
+forms and controls after reviewing the screen, not open-ended autonomous operation.
+Send, Submit, purchase, delete, authentication, passwords, arbitrary shortcuts, and
+elevated windows remain unavailable. Browser navigation stays a separate approved
+action restricted to HTTP(S) and an allowlist of browser processes.
+
+Tool definitions and this plugin context are injected on every turn, so retrieval-
+augmented generation is not used for tool awareness. RAG would add stale indexed
+descriptions and another trust boundary without improving knowledge of the live tools.
 
 Independent tool calls from one model round run concurrently to reduce latency,
 but their results are returned in the model's original call order. Action requests

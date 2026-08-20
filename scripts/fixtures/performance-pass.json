@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "smokeHealthy": true,
+  "metrics": {
+    "coldStartMs": { "median": 1250, "samples": [1200, 1250, 1300] },
+    "idlePrivateMemoryBytes": {
+      "median": 44040192,
+      "samples": [42991616, 44040192, 45088768]
+    },
+    "installerBytes": { "median": 9122611, "samples": [9122611] }
+  }
+}

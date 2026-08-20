@@ -23,9 +23,10 @@ Built with **Tauri v2** (Rust core + WebView2) and **SvelteKit** (Svelte 5).
   each send; screen capture includes show-before-send preview and local redaction.
 - **Plugins** — web-search and screen-context are built in; Music is install-to-enable
   with Windows media, Spotify, and best-effort YouTube Music support.
-- **Approval-gated actions** — the optional Computer control plugin can draft and
-  insert text into the last focused Windows app only after an exact target/text
-  preview is approved. It cannot click, send, submit, upload, or handle elevated apps.
+- **Approval-gated actions** — Computer control can insert text, navigate a browser,
+  and run a previewed bounded plan of clicks, common keys, and scrolling in the last
+  focused Windows app. It cannot send, submit, purchase, delete, authenticate, enter
+  passwords, use arbitrary shortcuts, or control elevated apps.
 - **Game mode** (on by default) — any focused fullscreen app on any monitor hides
   the entire widget globally, even if Perch is docked on another display. It comes
   back when you alt-tab away.

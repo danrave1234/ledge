@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "platform": "windows-latest-x64",
+  "metrics": {
+    "coldStartMs": { "median": 1200 },
+    "idlePrivateMemoryBytes": { "median": 41943040 },
+    "installerBytes": { "median": 8912896 }
+  },
+  "tolerances": {
+    "coldStartMs": 0.2,
+    "idlePrivateMemoryBytes": 0.15,
+    "installerBytes": 0.1
+  }
+}

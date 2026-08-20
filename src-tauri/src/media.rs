@@ -554,8 +554,8 @@ fn spawn_watcher(app: tauri::AppHandle) {
 
         // Emit once up front so a panel opening into an already-playing track
         // isn't blank until the next change.
-        let emit = |last: &mut Option<String>| {
-            let snap = imp::sessions(true).unwrap_or_default();
+        let emit = |last: &mut Option<String>, with_art: bool| {
+            let snap = imp::sessions(with_art).unwrap_or_default();
             // Only push when something actually changed. Players fire timeline
             // events continuously during playback, and re-serializing cover art
             // for each one would be a steady, pointless cost.
@@ -566,19 +566,31 @@ fn spawn_watcher(app: tauri::AppHandle) {
             *last = Some(key);
             let _ = app.emit("perch://now-playing", &snap);
         };
-        emit(&mut last);
+        emit(&mut last, true);
+        let mut idle_ticks = 0_u8;
 
         while WATCHING.load(Ordering::Relaxed) {
             match rx.recv_timeout(Duration::from_millis(500)) {
                 Ok(()) => {
+                    idle_ticks = 0;
                     // Debounce: a track change fires properties, playback, and
                     // timeline events in a burst. Coalesce them into one read.
                     std::thread::sleep(Duration::from_millis(200));
                     while rx.try_recv().is_ok() {}
                     rearm(&mut armed, &tx);
-                    emit(&mut last);
+                    emit(&mut last, true);
                 }
-                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    idle_ticks = idle_ticks.saturating_add(1);
+                    if idle_ticks >= 4 {
+                        // Some browser SMTC implementations occasionally miss
+                        // timeline events. Reconcile every two seconds without
+                        // decoding artwork so progress and duration recover
+                        // without requiring a pause/resume cycle.
+                        idle_ticks = 0;
+                        emit(&mut last, false);
+                    }
+                }
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
             }
         }

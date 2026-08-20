@@ -1,4 +1,4 @@
-import type { Placement } from "./types";
+import type { Attachment, Placement } from "./types";
 import type { StreamOpts, ToolCall } from "./providers/types";
 
 export function isTauri(): boolean {
@@ -42,18 +42,78 @@ export async function storeDelete(key: string): Promise<void> {
   await tryCmd("store_delete", undefined, { key });
 }
 
-export async function assetStore(id: string, dataUrl: string): Promise<boolean> {
+export async function assetStore(
+  id: string,
+  kind: Attachment["kind"],
+  content: string,
+): Promise<boolean> {
   if (!isTauri()) return false;
-  await cmd("asset_store", { id, dataUrl });
+  await cmd("asset_store", { id, kind, content });
   return true;
 }
 
-export async function assetRead(id: string): Promise<string | null> {
-  return tryCmd<string | null>("asset_read", null, { id });
+export async function assetRead(
+  id: string,
+): Promise<{ kind: Attachment["kind"]; content: string } | null> {
+  return tryCmd("asset_read", null, { id });
 }
 
 export async function assetDelete(id: string): Promise<void> {
   await tryCmd("asset_delete", undefined, { id });
+}
+
+export interface ExtractedDocument {
+  kind: "document";
+  name: string;
+  mime: string;
+  size: number;
+  text: string;
+}
+
+/** Validate and normalize a document locally. Raw bytes never leave Perch. */
+export async function extractDocument(
+  name: string,
+  bytes: Uint8Array,
+): Promise<ExtractedDocument> {
+  if (!isTauri()) throw new Error("Document extraction requires the desktop app.");
+  return await cmd("extract_document", { name, bytes: Array.from(bytes) });
+}
+
+/** Ask the user where to save exported text. Browser preview downloads it. */
+export async function exportText(
+  suggestedName: string,
+  contents: string,
+  extension: "md" | "json",
+): Promise<boolean> {
+  if (isTauri()) {
+    const [{ save }, { writeTextFile }] = await Promise.all([
+      import("@tauri-apps/plugin-dialog"),
+      import("@tauri-apps/plugin-fs"),
+    ]);
+    const path = await save({
+      defaultPath: suggestedName,
+      filters: [
+        {
+          name: extension === "md" ? "Markdown" : "JSON",
+          extensions: [extension],
+        },
+      ],
+    });
+    if (!path) return false;
+    await writeTextFile(path, contents);
+    return true;
+  }
+
+  if (typeof document === "undefined") return false;
+  const url = URL.createObjectURL(
+    new Blob([contents], { type: "text/plain;charset=utf-8" }),
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = suggestedName;
+  link.click();
+  URL.revokeObjectURL(url);
+  return true;
 }
 
 type ChatEvent =
@@ -205,10 +265,24 @@ export interface ScreenContext {
   text: string;
 }
 
+export type CaptureMode = "display" | "active-window";
+export interface CropRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface ComputerTarget {
   id: string;
   title: string;
 }
+
+export type ComputerAction =
+  | { kind: "click" | "double_click" | "right_click"; x: number; y: number }
+  | { kind: "type"; text: string }
+  | { kind: "key"; key: string }
+  | { kind: "scroll"; amount: number };
 
 /** The last external window focused before the user opened Perch. */
 export async function computerTarget(): Promise<ComputerTarget | null> {
@@ -224,11 +298,39 @@ export async function computerInsertText(
   await cmd("computer_insert_text", { target, text });
 }
 
+/** Navigate the exact approved browser window to an approved HTTP(S) URL. */
+export async function computerNavigateBrowser(
+  target: ComputerTarget,
+  url: string,
+): Promise<void> {
+  if (!isTauri()) throw new Error("Browser navigation requires the Windows desktop app.");
+  await cmd("computer_navigate_browser", { target, url });
+}
+
+/** Run one explicitly approved, bounded action plan in the exact captured window. */
+export async function computerRunActions(
+  target: ComputerTarget,
+  actions: ComputerAction[],
+): Promise<void> {
+  if (!isTauri()) throw new Error("Computer actions require the Windows desktop app.");
+  await cmd("computer_run_actions", { target, actions });
+}
+
 /** Capture + OCR a screen so text-only providers can use it too.
  *  `display` is the same monitor index the widget docks to, so what Perch
  *  captures is always the screen the user sees it on. */
-export async function captureContext(display?: number): Promise<ScreenContext | null> {
-  return tryCmd<ScreenContext | null>("capture_context", null, { display });
+export async function captureContext(
+  mode: CaptureMode,
+  display?: number,
+): Promise<ScreenContext | null> {
+  if (!isTauri()) return null;
+  return await cmd<ScreenContext>("capture_context", { mode, display });
+}
+
+/** Crop the reviewed PNG in physical pixels and OCR exactly that result. */
+export async function cropContext(image: string, rect: CropRect): Promise<ScreenContext> {
+  if (!isTauri()) throw new Error("Region capture requires the Windows desktop app.");
+  return await cmd<ScreenContext>("crop_context", { image, rect });
 }
 
 export async function setGameMode(enabled: boolean): Promise<void> {

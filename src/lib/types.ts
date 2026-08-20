@@ -25,14 +25,33 @@ export interface MsgCard {
   data: unknown;
 }
 
+export type Attachment =
+  | {
+      kind: "image";
+      name?: string;
+      mime: string;
+      size: number;
+      data?: string;
+      assetRef?: string;
+    }
+  | {
+      kind: "document";
+      name: string;
+      mime: string;
+      size: number;
+      text?: string;
+      assetRef?: string;
+    };
+
 export interface Msg {
   id: string;
   role: Role;
   content: string;
   usedScreen?: boolean;
   usedWeb?: boolean;
+  attachment?: Attachment;
+  /** Legacy image fields, accepted during migration only. */
   image?: string;
-  /** App-data asset id. `image` is hydrated at runtime and omitted from JSON. */
   imageRef?: string;
   ts: number;
   error?: boolean;
@@ -88,6 +107,8 @@ export interface TurnConsent {
 export interface ApprovedScreen {
   image: string;
   text?: string;
+  width?: number;
+  height?: number;
   /** Redaction invalidates OCR because it may contain text hidden in the image. */
   redacted?: boolean;
 }
