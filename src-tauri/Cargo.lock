@@ -3420,7 +3420,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
- "windows 0.61.3",
+ "windows 0.62.2",
  "xcap",
 ]
 
