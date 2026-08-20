@@ -51,6 +51,7 @@
 
   let error = $state("");
   let busy = $state(false);
+  let dragging = $state(false);
 
   // Locally advanced playback position. Reset whenever the backend reports one,
   // then ticked forward while playing so the bar moves between events.
@@ -59,6 +60,7 @@
   let elapsed = $state(0);
 
   $effect(() => {
+    if (dragging) return;
     base = session?.position_ms ?? data.position_ms ?? 0;
     since = Date.now();
     elapsed = base;
@@ -66,10 +68,13 @@
 
   $effect(() => {
     if (!playing || !duration) return;
-    const id = setInterval(() => {
+    let frame = 0;
+    const tick = () => {
       elapsed = Math.min(base + (Date.now() - since), duration);
-    }, 1000);
-    return () => clearInterval(id);
+      if (elapsed < duration) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
   });
 
   let progress = $derived(duration > 0 ? Math.min(100, (elapsed / duration) * 100) : 0);
@@ -90,6 +95,33 @@
     } catch (e) {
       // Players refuse commands routinely — an ad is playing, nothing is
       // loaded, the control is disabled. Say so instead of failing silently.
+      error = e instanceof Error ? e.message : String(e);
+    } finally {
+      busy = false;
+    }
+  }
+
+  function previewSeek(event: Event) {
+    dragging = true;
+    elapsed = Number((event.currentTarget as HTMLInputElement).value);
+  }
+
+  function cancelSeek() {
+    dragging = false;
+  }
+
+  async function seek(event: Event) {
+    if (busy || !session?.can_seek) return;
+    const position = Number((event.currentTarget as HTMLInputElement).value);
+    dragging = false;
+    busy = true;
+    error = "";
+    base = position;
+    since = Date.now();
+    elapsed = position;
+    try {
+      await control("seek", session.app_id, position);
+    } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
       busy = false;
@@ -120,7 +152,25 @@
       {/if}
     </div>
     {#if duration > 0}
-      <div class="bar" aria-hidden="true"><i style:width="{progress}%"></i></div>
+      <div class="bar" class:disabled={!session?.can_seek} style:--progress="{progress}%">
+        <input
+          type="range"
+          min="0"
+          max={duration}
+          step="1000"
+          value={elapsed}
+          disabled={busy || !session?.can_seek}
+          aria-label={`Seek ${title || "media"}`}
+          aria-valuetext={`${fmt(elapsed)} of ${fmt(duration)}`}
+          title={session?.can_seek
+            ? "Click or drag to seek"
+            : "Seeking is unavailable for this player"}
+          oninput={previewSeek}
+          onpointerup={seek}
+          onpointercancel={cancelSeek}
+          onchange={seek}
+        />
+      </div>
       {#if !compact}
         <div class="times"><span>{fmt(elapsed)}</span><span>{fmt(duration)}</span></div>
       {/if}
@@ -238,18 +288,25 @@
     flex-shrink: 0;
   }
   .bar {
-    height: 3px;
+    height: 12px;
     margin-top: 6px;
-    border-radius: var(--radius-pill);
-    background: var(--surface-3);
-    overflow: hidden;
+    display: flex;
+    align-items: center;
   }
-  .bar i {
-    display: block;
-    height: 100%;
-    background: var(--accent);
-    border-radius: var(--radius-pill);
-    transition: width 1s linear;
+  .bar input {
+    width: 100%;
+    height: 12px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent);
+    background: linear-gradient(
+      to right,
+      var(--accent) var(--progress),
+      var(--surface-3) var(--progress)
+    );
+  }
+  .bar.disabled input {
+    cursor: default;
   }
   .times {
     display: flex;

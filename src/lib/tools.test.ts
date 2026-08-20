@@ -24,16 +24,28 @@ beforeEach(() => {
 });
 
 describe("availability gating", () => {
-  it("offers nothing when the user has consented to nothing", () => {
-    expect(toolSpecs(on(), { web: false, screen: false, music: false })).toEqual([]);
+  it("offers only approval-gated actions when no observation is consented", () => {
+    expect(
+      toolSpecs(on(), { web: false, screen: false, music: false }).map((t) => t.name),
+    ).toEqual([
+      "prepare_text_insertion",
+      "prepare_browser_navigation",
+      "prepare_computer_actions",
+    ]);
   });
 
   it("offers only what the user turned on", () => {
     expect(toolSpecs(on(), { ...all, screen: false }).map((t) => t.name)).toEqual([
       "web_search",
+      "prepare_text_insertion",
+      "prepare_browser_navigation",
+      "prepare_computer_actions",
     ]);
     expect(toolSpecs(on(), { ...all, web: false }).map((t) => t.name)).toEqual([
       "read_screen",
+      "prepare_text_insertion",
+      "prepare_browser_navigation",
+      "prepare_computer_actions",
     ]);
   });
 
@@ -41,15 +53,26 @@ describe("availability gating", () => {
     // The privacy decision is per-message consent AND an installed plugin;
     // neither one alone may hand the model the capability.
     const s = on({ plugins: { "screen-context": false } });
-    expect(toolSpecs(s, all).map((t) => t.name)).toEqual(["web_search"]);
+    expect(toolSpecs(s, all).map((t) => t.name)).toEqual([
+      "web_search",
+      "prepare_text_insertion",
+      "prepare_browser_navigation",
+      "prepare_computer_actions",
+    ]);
   });
 
-  it("exposes exactly the two first-party tools when fully enabled", () => {
+  it("exposes all built-in first-party tools when fully enabled", () => {
     expect(
       availableTools(on(), all)
         .map((t) => t.pluginId)
         .sort(),
-    ).toEqual(["screen-context", "web-search"]);
+    ).toEqual([
+      "computer-control",
+      "computer-control",
+      "computer-control",
+      "screen-context",
+      "web-search",
+    ]);
   });
 });
 

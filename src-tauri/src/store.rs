@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -15,6 +16,13 @@ use windows::core::PCWSTR;
 
 static WRITE_SEQ: AtomicU64 = AtomicU64::new(0);
 const MAX_ASSET_BYTES: usize = 12 * 1024 * 1024;
+const MAX_DOCUMENT_ASSET_BYTES: usize = 800_000;
+
+#[derive(Deserialize, Serialize)]
+pub struct AssetRecord {
+    kind: String,
+    content: String,
+}
 
 fn sanitize(key: &str) -> String {
     key.chars()
@@ -135,29 +143,48 @@ fn asset_dir(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-pub fn asset_store(app: AppHandle, id: String, data_url: String) -> Result<(), String> {
+pub fn asset_store(
+    app: AppHandle,
+    id: String,
+    kind: String,
+    content: String,
+) -> Result<(), String> {
     if id.is_empty() || sanitize(&id) != id {
         return Err("invalid asset id".into());
     }
-    if !data_url.starts_with("data:image/") || !data_url.contains(";base64,") {
-        return Err("only base64 image data URLs can be stored".into());
+    match kind.as_str() {
+        "image" => {
+            if !content.starts_with("data:image/") || !content.contains(";base64,") {
+                return Err("only base64 image data URLs can be stored".into());
+            }
+            if content.len() > MAX_ASSET_BYTES {
+                return Err("image is too large (12 MB maximum)".into());
+            }
+        }
+        "document" => {
+            if content.len() > MAX_DOCUMENT_ASSET_BYTES {
+                return Err("document text is too large for storage".into());
+            }
+        }
+        _ => return Err("invalid asset kind".into()),
     }
-    if data_url.len() > MAX_ASSET_BYTES {
-        return Err("image is too large (12 MB maximum)".into());
-    }
-    atomic_write(
-        &asset_dir(&app)?.join(format!("{id}.asset")),
-        data_url.as_bytes(),
-    )
+    let value = serde_json::to_vec(&AssetRecord { kind, content }).map_err(|e| e.to_string())?;
+    atomic_write(&asset_dir(&app)?.join(format!("{id}.asset")), &value)
 }
 
 #[tauri::command]
-pub fn asset_read(app: AppHandle, id: String) -> Result<Option<String>, String> {
+pub fn asset_read(app: AppHandle, id: String) -> Result<Option<AssetRecord>, String> {
     if id.is_empty() || sanitize(&id) != id {
         return Err("invalid asset id".into());
     }
     match fs::read_to_string(asset_dir(&app)?.join(format!("{id}.asset"))) {
-        Ok(value) => Ok(Some(value)),
+        Ok(value) if value.starts_with("data:image/") => Ok(Some(AssetRecord {
+            kind: "image".into(),
+            content: value,
+        })),
+        Ok(value) => serde_json::from_str(&value)
+            .map(Some)
+            .map_err(|e| e.to_string()),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(e) => Err(e.to_string()),
     }
@@ -206,6 +233,18 @@ mod tests {
             let path = std::path::Path::new("root").join(format!("{name}.json"));
             assert_eq!(path.parent(), Some(std::path::Path::new("root")), "{key}");
         }
+    }
+
+    #[test]
+    fn typed_asset_record_round_trips() {
+        let record = super::AssetRecord {
+            kind: "document".into(),
+            content: "bounded text".into(),
+        };
+        let json = serde_json::to_string(&record).unwrap();
+        let decoded: super::AssetRecord = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.kind, "document");
+        assert_eq!(decoded.content, "bounded text");
     }
 
     #[test]

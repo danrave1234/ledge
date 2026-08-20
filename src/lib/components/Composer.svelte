@@ -5,19 +5,23 @@
   import { pluginActive } from "$lib/plugins";
   import { send, stop } from "$lib/controller";
   import { EFFORTS, EFFORT_LABELS } from "$lib/types";
-  import type { ApprovedScreen, TurnConsent } from "$lib/types";
-  import { captureScreenshot } from "$lib/capture";
+  import type { ApprovedScreen, Attachment, TurnConsent } from "$lib/types";
+  import { captureScreenshot, cropScreenshot } from "$lib/capture";
+  import { extractDocument, type CropRect } from "$lib/native";
+  import { canSend, isSupportedAttachment } from "$lib/attachments";
 
   const MAX_TEXTAREA_H = 132;
 
   let text = $state("");
   let ta: HTMLTextAreaElement | undefined = $state();
   let fileInput: HTMLInputElement | undefined = $state();
-  let attached = $state<string | null>(null);
+  let attached = $state<Attachment | null>(null);
+  let attachmentError = $state("");
   let web = $state(false);
   let screen = $state<ApprovedScreen | null>(null);
   let music = $state(false);
   let capturingScreen = $state(false);
+  let captureError = $state("");
   let s = $derived($settings);
   let generating = $derived($ui.generating);
 
@@ -53,9 +57,9 @@
 
   async function submit() {
     const t = text;
-    if (!t.trim() && !attached) return;
+    if (!canSend(t, attached)) return;
     text = "";
-    const img = attached;
+    const selected = attached;
     const approved = screen;
     const consent: TurnConsent = { web, screen: !!approved, music };
     attached = null;
@@ -64,7 +68,7 @@
     music = false;
     queueMicrotask(autosize);
     await send(t, {
-      attachment: img ?? undefined,
+      attachment: selected ?? undefined,
       consent,
       approvedScreen: approved ?? undefined,
     });
@@ -81,13 +85,29 @@
   async function recaptureScreen() {
     if (capturingScreen) return;
     capturingScreen = true;
+    captureError = "";
     attached = null;
     try {
-      const cap = await captureScreenshot(s.display);
-      screen = cap.image ? { image: cap.image, text: cap.text } : null;
+      const cap = await captureScreenshot(undefined, "active-window");
+      screen = cap.image
+        ? { image: cap.image, text: cap.text, width: cap.width, height: cap.height }
+        : null;
+      captureError =
+        cap.error ?? (cap.image ? "" : "Screen capture requires the desktop app.");
     } finally {
       capturingScreen = false;
     }
+  }
+
+  async function selectRegion(rect: CropRect) {
+    if (!screen || capturingScreen) return;
+    capturingScreen = true;
+    captureError = "";
+    const cap = await cropScreenshot(screen.image, rect);
+    if (cap.image)
+      screen = { image: cap.image, text: cap.text, width: cap.width, height: cap.height };
+    captureError = cap.error ?? "";
+    capturingScreen = false;
   }
 
   function onKey(e: KeyboardEvent) {
@@ -99,13 +119,42 @@
   function onFile(e: Event) {
     const input = e.target as HTMLInputElement;
     const f = input.files?.[0];
-    if (f) {
-      screen = null;
-      const reader = new FileReader();
-      reader.onload = () => (attached = reader.result as string);
-      reader.readAsDataURL(f);
-    }
+    if (f) void attachFile(f);
     input.value = "";
+  }
+
+  async function attachFile(file: File) {
+    attachmentError = "";
+    const invalid = isSupportedAttachment(file);
+    if (invalid) {
+      attachmentError = invalid;
+      return;
+    }
+    screen = null;
+    try {
+      if (file.type.startsWith("image/")) {
+        const data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error("Could not read the image."));
+          reader.readAsDataURL(file);
+        });
+        attached = {
+          kind: "image",
+          name: file.name,
+          mime: file.type,
+          size: file.size,
+          data,
+        };
+      } else {
+        attached = await extractDocument(
+          file.name,
+          new Uint8Array(await file.arrayBuffer()),
+        );
+      }
+    } catch (error) {
+      attachmentError = error instanceof Error ? error.message : String(error);
+    }
   }
 </script>
 
@@ -113,20 +162,37 @@
   {#if screen}
     <ScreenPreview
       image={screen.image}
+      width={screen.width}
+      height={screen.height}
       onredact={(image) => (screen = { image, redacted: true })}
+      onselect={selectRegion}
       onremove={() => (screen = null)}
       onrecapture={recaptureScreen}
     />
   {:else if capturingScreen}
     <div class="capture-status" aria-live="polite">Capturing screen for review…</div>
   {/if}
+  {#if captureError}<div class="attachment-error" role="alert">{captureError}</div>{/if}
   {#if attached}
     <div class="att">
-      <img src={attached} alt="attachment" />
+      {#if attached.kind === "image"}
+        <img src={attached.data} alt={attached.name ?? "attachment"} />
+      {:else}
+        <div class="document">
+          <Icon name="clip" size={16} />
+          <span>
+            <strong>{attached.name}</strong>
+            <small>{attached.mime} · {Math.ceil(attached.size / 1024)} KB</small>
+          </span>
+        </div>
+      {/if}
       <button class="rm" onclick={() => (attached = null)} aria-label="Remove attachment">
         <Icon name="x" size={12} />
       </button>
     </div>
+  {/if}
+  {#if attachmentError}
+    <div class="attachment-error" role="alert">{attachmentError}</div>
   {/if}
   <div class="inputrow">
     <textarea
@@ -144,7 +210,7 @@
       <button
         class="send"
         onclick={submit}
-        disabled={!text.trim() && !attached}
+        disabled={!canSend(text, attached)}
         aria-label="Send"
       >
         <Icon name="send" size={16} />
@@ -200,7 +266,13 @@
       {EFFORT_LABELS[s.effort]}
     </button>
   </div>
-  <input bind:this={fileInput} type="file" accept="image/*" onchange={onFile} hidden />
+  <input
+    bind:this={fileInput}
+    type="file"
+    accept="image/*,.txt,.md,.json,.csv,.pdf"
+    onchange={onFile}
+    hidden
+  />
 </div>
 
 <style>
@@ -224,6 +296,29 @@
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-2);
     display: block;
+  }
+  .document {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 180px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+  }
+  .document span {
+    display: flex;
+    flex-direction: column;
+  }
+  .document small {
+    color: var(--text-2);
+    font-size: var(--fs-xs);
+  }
+  .attachment-error {
+    margin-bottom: 8px;
+    color: var(--danger);
+    font-size: var(--fs-sm);
   }
   .rm {
     position: absolute;

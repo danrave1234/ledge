@@ -23,8 +23,10 @@ import { pluginContexts } from "./plugins/registry";
 import { runTurn } from "./agent";
 import { pluginActive } from "./plugins";
 import { buildSystemPrompt } from "./prompt";
-import type { ApprovedScreen, Msg, Settings, TurnConsent } from "./types";
-import { persistImage } from "./assets";
+import { prepareComputerControlFallback } from "./plugins/computer-control/fallback";
+import type { ApprovedScreen, Attachment, Msg, Settings, TurnConsent } from "./types";
+import { persistAttachment, persistImage } from "./assets";
+import { messageContent } from "./attachments";
 
 let abort: AbortController | null = null;
 
@@ -117,8 +119,13 @@ async function buildHistory(
     ? all.findIndex((m) => m.id === summarizedThrough)
     : -1;
   const pending = covered >= 0 ? all.slice(covered + 1) : all;
+  const budgeted = pending.map((message) => ({
+    ...message,
+    content: messageContent(message),
+    attachment: undefined,
+  }));
 
-  const { keep, compact } = planContext(pending);
+  const { keep, compact } = planContext(budgeted);
   let summary = stored;
 
   if (compact.length) {
@@ -129,7 +136,7 @@ async function buildHistory(
     } catch (e) {
       // Compaction is an optimisation, never a failure path.
       console.error("context compaction failed", e);
-      return { history: toWire(pending), summary: stored };
+      return { history: toWire(budgeted), summary: stored };
     }
   }
 
@@ -139,12 +146,12 @@ async function buildHistory(
 function toWire(msgs: Msg[]): WireMsg[] {
   return msgs.map((m) => ({
     role: m.role as WireMsg["role"],
-    content: m.content,
+    content: messageContent(m),
   }));
 }
 
 export interface SendOptions {
-  attachment?: string;
+  attachment?: Attachment;
   consent?: TurnConsent;
   approvedScreen?: ApprovedScreen;
 }
@@ -170,8 +177,19 @@ export async function send(text: string, options: SendOptions = {}) {
     !provider.supportsTools && consent.screen && pluginActive(s, "screen-context");
   const screenText = prefetchScreen ? options.approvedScreen?.text : undefined;
   const image =
-    attachment ?? (prefetchScreen ? options.approvedScreen?.image : undefined);
-  const storedImage = await persistImage(image);
+    attachment?.kind === "image"
+      ? attachment.data
+      : prefetchScreen
+        ? options.approvedScreen?.image
+        : undefined;
+  const messageAttachment =
+    attachment ??
+    (image
+      ? { kind: "image" as const, mime: "image/png", size: image.length, data: image }
+      : undefined);
+  const storedAttachment = messageAttachment
+    ? await persistAttachment(messageAttachment)
+    : undefined;
 
   const userMsg: Msg = {
     id: uid(),
@@ -182,7 +200,7 @@ export async function send(text: string, options: SendOptions = {}) {
     // In tool mode nothing has been used yet — the badges are set on the reply
     // once a tool actually runs, so they can never claim more than happened.
     usedWeb: false,
-    ...storedImage, // reference is persisted; data URL remains runtime-only
+    attachment: storedAttachment,
   };
   messages.update((m) => [...m, userMsg]);
   saveActive();
@@ -201,6 +219,30 @@ export async function send(text: string, options: SendOptions = {}) {
   // short of restarting. Context building and the pre-fetch search used to sit
   // outside it.
   try {
+    // Codex CLI is a black-box text stream and cannot return structured tool
+    // calls. Handle the one action we can identify without model inference so
+    // enabling Computer control still works for an explicit browser + URL
+    // request, while preserving the exact same approval card and native checks.
+    const fallbackOutcome = provider.supportsTools
+      ? null
+      : await prepareComputerControlFallback(t, s, consent, options.approvedScreen);
+    if (fallbackOutcome) {
+      messages.update((m) =>
+        m.map((x) =>
+          x.id === asst.id
+            ? {
+                ...x,
+                content: fallbackOutcome.card
+                  ? "Review the browser navigation below, then press Open or Cancel."
+                  : fallbackOutcome.content,
+                cards: fallbackOutcome.card ? [fallbackOutcome.card] : undefined,
+              }
+            : x,
+        ),
+      );
+      return;
+    }
+
     // Context: recent turns go verbatim, older ones are represented by running
     // notes, so a long session neither costs a fortune nor overflows the window.
     const { history, summary } = await buildHistory(s, provider, asst.id);
@@ -242,7 +284,10 @@ export async function send(text: string, options: SendOptions = {}) {
       // Only claim what this turn's tools genuinely allow. On the pre-fetch
       // path (Codex) no tools are offered, so the claim narrows by itself.
       capabilities: toolMode ? toolCapabilities(s, consent) : [],
-      pluginContext: pluginContexts(s, consent),
+      // Plugin action instructions must only be shown when the provider can
+      // actually call the named tools. Otherwise they contradict the honest
+      // capability claim and prompt the model to refuse an enabled feature.
+      pluginContext: toolMode ? pluginContexts(s, consent) : [],
       screenImage: prefetchScreen && !!image,
       screenText: prefetchScreen ? screenText : undefined,
     });

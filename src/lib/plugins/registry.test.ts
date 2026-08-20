@@ -56,28 +56,44 @@ describe("plugin registry", () => {
 });
 
 describe("gating through the registry", () => {
-  it("offers nothing on default settings", () => {
-    // Core plugins are installed but their consent toggles are off, and the
-    // optional ones are not installed at all.
-    expect(availableTools(settingsWith(), none)).toEqual([]);
+  it("offers approval-gated computer control on default settings", () => {
+    // Text insertion is built in and cannot act until the user approves its
+    // card. Privacy-sensitive observation tools still require turn consent.
+    expect(availableTools(settingsWith(), none).map((t) => t.spec.name)).toEqual([
+      "prepare_text_insertion",
+      "prepare_browser_navigation",
+      "prepare_computer_actions",
+    ]);
   });
 
   it("offers a tool only once BOTH its plugin and its toggle are on", () => {
     expect(
       availableTools(settingsWith(), { ...none, web: true }).map((t) => t.spec.name),
-    ).toEqual(["web_search"]);
+    ).toEqual([
+      "web_search",
+      "prepare_text_insertion",
+      "prepare_browser_navigation",
+      "prepare_computer_actions",
+    ]);
     expect(
       availableTools(settingsWith({ plugins: { "web-search": false } }), {
         ...none,
         web: true,
-      }),
-    ).toEqual([]);
+      }).map((t) => t.spec.name),
+    ).toEqual([
+      "prepare_text_insertion",
+      "prepare_browser_navigation",
+      "prepare_computer_actions",
+    ]);
   });
 
   it("keeps music's read tool separate from its control tool", () => {
     const installed = settingsWith({ installedPlugins: ["music"] });
     expect(availableTools(installed, none).map((t) => t.spec.name)).toEqual([
       "music_now_playing",
+      "prepare_text_insertion",
+      "prepare_browser_navigation",
+      "prepare_computer_actions",
     ]);
 
     // Full consent adds transport control, and YouTube — which needs no
@@ -96,8 +112,26 @@ describe("gating through the registry", () => {
 });
 
 describe("plugin context blocks", () => {
-  it("contributes nothing when no plugin is active", () => {
-    expect(pluginContexts(settingsWith(), none)).toEqual([]);
+  it("instructs default installs to create action approval cards", () => {
+    const text = pluginContexts(settingsWith(), none).join("\n");
+    expect(text).toContain("MUST call `prepare_text_insertion`");
+    expect(text).toContain("MUST call `prepare_browser_navigation`");
+    expect(text).toContain("MUST call `prepare_computer_actions`");
+    expect(text).toContain("must approve");
+  });
+
+  it("removes computer control tools and instructions when disabled", () => {
+    const disabled = settingsWith({ plugins: { "computer-control": false } });
+    expect(availableTools(disabled, none)).toEqual([]);
+    expect(pluginContexts(disabled, none).join("\n")).not.toContain(
+      "prepare_text_insertion",
+    );
+    expect(pluginContexts(disabled, none).join("\n")).not.toContain(
+      "prepare_browser_navigation",
+    );
+    expect(pluginContexts(disabled, none).join("\n")).not.toContain(
+      "prepare_computer_actions",
+    );
   });
 
   it("warns the model when it has no way to start a specific track", () => {

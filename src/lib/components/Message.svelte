@@ -114,6 +114,10 @@
     }
   }
 
+  function attachedImage(message: Msg): string | undefined {
+    return message.attachment?.kind === "image" ? message.attachment.data : message.image;
+  }
+
   function enhanceCode(root: HTMLElement) {
     root.querySelectorAll("pre").forEach((pre) => {
       const parent = pre.parentElement;
@@ -176,12 +180,22 @@
 <div class="msg {msg.role}" in:fly={flyIn}>
   {#if msg.role === "user"}
     <div class="bubble user">{msg.content}</div>
-    {#if msg.usedScreen || msg.usedWeb || msg.image}
+    {#if msg.attachment?.kind === "document"}
+      <div class="document-receipt">
+        <Icon name="clip" size={12} />
+        <span>{msg.attachment.name}</span>
+        <small>{Math.ceil(msg.attachment.size / 1024)} KB</small>
+      </div>
+    {/if}
+    {#if msg.usedScreen || msg.usedWeb || msg.image || msg.attachment?.kind === "image"}
       <div class="tags">
-        {#if msg.image}
-          <button class="viewbtn" onclick={() => openImage(msg.image!)}>
-            <Icon name="screen" size={12} /> view {msg.usedScreen ? "screen" : "image"}
-          </button>
+        {#if msg.image || msg.attachment?.kind === "image"}
+          {@const image = attachedImage(msg)}
+          {#if image}
+            <button class="viewbtn" onclick={() => openImage(image)}>
+              <Icon name="screen" size={12} /> view {msg.usedScreen ? "screen" : "image"}
+            </button>
+          {/if}
         {/if}
         {#if msg.usedWeb}<span><Icon name="web" size={12} /> web</span>{/if}
       </div>
@@ -240,6 +254,20 @@
   }
   .msg.user {
     align-items: flex-end;
+  }
+  .document-receipt {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 88%;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-2);
+    font-size: var(--fs-sm);
+  }
+  .document-receipt small {
+    color: var(--text-3);
   }
   .bubble {
     max-width: 88%;

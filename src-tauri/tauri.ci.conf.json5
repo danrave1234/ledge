@@ -1,0 +1,6 @@
+{
+  bundle: {
+    createUpdaterArtifacts: false,
+  },
+}
+// Pull-request builds do not have release signing secrets.

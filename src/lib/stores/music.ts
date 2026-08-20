@@ -11,9 +11,9 @@ import {
 /* ==========================================================================
    Now-playing state, fed by the Rust SMTC watcher.
 
-   Push, not poll: the backend subscribes to Windows' own media events and emits
-   `perch://now-playing` when something actually changes. Perch is resident all
-   day, so a permanent 1s timer is exactly the cost this widget exists to avoid.
+   Primarily push: the backend subscribes to Windows' media events and emits
+   `perch://now-playing` when something changes. A lightweight reconciliation
+   read also repairs progress when a browser misses a timeline event.
 
    The watcher is started only while the music plugin is active — see
    `syncMusicWatch`.
@@ -21,6 +21,24 @@ import {
 
 /** Every player Windows knows about, current session first. */
 export const nowPlaying = writable<MediaSession[]>([]);
+
+/** Artwork-free reconciliation snapshots should not make an existing cover
+ * disappear. The native watcher omits artwork from its inexpensive fallback
+ * reads, while authoritative media events still replace it when available. */
+export function mergeMediaSessions(
+  previous: MediaSession[],
+  incoming: MediaSession[],
+): MediaSession[] {
+  const artwork = new Map(previous.map((session) => [session.app_id, session.art]));
+  return incoming.map((session) => ({
+    ...session,
+    art: session.art ?? artwork.get(session.app_id),
+  }));
+}
+
+function updateNowPlaying(list: MediaSession[]): void {
+  nowPlaying.update((previous) => mergeMediaSessions(previous, list));
+}
 
 let unlisten: (() => void) | null = null;
 let watching = false;
@@ -43,7 +61,7 @@ export function isLive(s: MediaSession | undefined): s is MediaSession {
 
 export async function refreshNowPlaying(): Promise<void> {
   try {
-    nowPlaying.set(await mediaSessions(true));
+    updateNowPlaying(await mediaSessions(true));
   } catch (e) {
     console.error("now-playing refresh failed", e);
   }
@@ -66,7 +84,7 @@ export async function syncMusicWatch(active: boolean): Promise<void> {
         return;
       }
 
-      const stopListening = await onNowPlaying((list) => nowPlaying.set(list));
+      const stopListening = await onNowPlaying(updateNowPlaying);
       // The desired state may have changed while event registration was pending.
       if (!desired) {
         stopListening();
@@ -82,8 +100,12 @@ export async function syncMusicWatch(active: boolean): Promise<void> {
 
 /** Drive a player from the UI. Throws on refusal so the caller can show it —
  *  a transport button that silently does nothing is worse than an error. */
-export async function control(action: MediaAction, app?: string): Promise<void> {
-  await mediaControl(action, app);
+export async function control(
+  action: MediaAction,
+  app?: string,
+  positionMs?: number,
+): Promise<void> {
+  await mediaControl(action, app, positionMs);
   // SMTC reports the new state through the watcher, but players can take a
   // moment. Refresh so the button's own feedback isn't a frame behind.
   await refreshNowPlaying();
