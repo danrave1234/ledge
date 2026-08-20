@@ -118,10 +118,9 @@ pub fn parse_search(body: &str) -> Result<Vec<YoutubeItem>, String> {
         .filter_map(|item| {
             let (url, kind) = if let Some(v) = item.id.video_id.filter(|v| !v.is_empty()) {
                 (watch_url(&v), "video")
-            } else if let Some(p) = item.id.playlist_id.filter(|p| !p.is_empty()) {
-                (playlist_url(&p), "playlist")
             } else {
-                return None;
+                let p = item.id.playlist_id.filter(|p| !p.is_empty())?;
+                (playlist_url(&p), "playlist")
             };
             let art = item
                 .snippet
