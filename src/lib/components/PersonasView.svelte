@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Icon from "./Icon.svelte";
-  import { BUILTIN_PERSONAS } from "../personas";
+  import Icon from "$lib/components/Icon.svelte";
+  import { BUILTIN_PERSONAS } from "$lib/personas";
   import {
     customPersonas,
     settings,
@@ -8,8 +8,8 @@
     upsertPersona,
     deletePersona,
     uid,
-  } from "../stores";
-  import type { Persona } from "../types";
+  } from "$lib/stores";
+  import type { Persona } from "$lib/types";
 
   let s = $derived($settings);
   let custom = $derived($customPersonas);
@@ -36,7 +36,12 @@
   {#if editing}
     <div class="editor">
       <label for="p-name">Name</label>
-      <input id="p-name" class="field" bind:value={editing.name} placeholder="e.g. Career mentor" />
+      <input
+        id="p-name"
+        class="field"
+        bind:value={editing.name}
+        placeholder="e.g. Career mentor"
+      />
       <label for="p-prompt">Personality / instructions</label>
       <textarea
         id="p-prompt"
@@ -67,7 +72,11 @@
           <button class="icon-btn" aria-label="Edit" onclick={() => edit(p)}>
             <Icon name="edit" size={15} />
           </button>
-          <button class="icon-btn" aria-label="Delete" onclick={() => deletePersona(p.id)}>
+          <button
+            class="icon-btn"
+            aria-label="Delete"
+            onclick={() => deletePersona(p.id)}
+          >
             <Icon name="trash" size={15} />
           </button>
         {/if}
@@ -85,17 +94,21 @@
   .add {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     width: 100%;
-    justify-content: center;
-    height: 36px;
+    height: var(--ctl-lg);
     border: 1px dashed var(--border-2);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--text-2);
-    font-size: 13px;
+    font-family: inherit;
+    font-size: var(--fs-md);
     cursor: pointer;
     margin-bottom: 12px;
+    transition:
+      border-color var(--dur) var(--ease),
+      color var(--dur) var(--ease);
   }
   .add:hover {
     border-color: var(--accent);
@@ -105,10 +118,13 @@
     display: flex;
     align-items: flex-start;
     gap: 4px;
-    border-radius: 11px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--border);
     padding: 3px;
     margin-bottom: 8px;
+    transition:
+      border-color var(--dur) var(--ease),
+      background var(--dur) var(--ease);
   }
   .row.sel {
     border-color: var(--accent);
@@ -123,25 +139,28 @@
     border: none;
     background: transparent;
     color: var(--text);
+    font-family: inherit;
     text-align: left;
     cursor: pointer;
     min-width: 0;
   }
   .name {
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 600;
   }
   .name em {
     color: var(--accent-text);
     font-style: normal;
     font-weight: 400;
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .prompt {
-    font-size: 11.5px;
+    font-size: var(--fs-sm);
     color: var(--text-3);
+    line-height: var(--lh-tight);
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -151,7 +170,7 @@
     gap: 6px;
   }
   .editor label {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--text-2);
     margin-top: 6px;
   }

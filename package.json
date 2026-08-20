@@ -1,17 +1,35 @@
 {
   "name": "perch",
   "version": "0.1.0",
-  "description": "",
+  "description": "Perch — an edge-docked AI assistant widget for Windows",
+  "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22.14.0",
+    "pnpm": ">=11.0.0"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "check": "svelte-kit sync && svelte-check --tsgo --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsgo --tsconfig ./tsconfig.json --watch",
+    "lint": "prettier --check . && eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "verify": "svelte-kit sync && svelte-check --tsgo --tsconfig ./tsconfig.json && prettier --check . && eslint . && vitest run && vite build",
+    "rust:lint": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings",
     "tauri": "tauri"
   },
   "license": "MIT",
+  "knip": {
+    "ignoreDependencies": [
+      "@typescript/native"
+    ]
+  },
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-autostart": "^2.5.1",
@@ -23,13 +41,25 @@
     "marked": "^18.0.9"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@sveltejs/adapter-static": "^3.0.6",
-    "@sveltejs/kit": "^2.9.0",
-    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "@sveltejs/kit": "^2.70.2",
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tauri-apps/cli": "^2",
-    "svelte": "^5.0.0",
-    "svelte-check": "^4.0.0",
-    "typescript": "~5.6.2",
-    "vite": "^6.0.3"
+    "eslint": "^10.8.1",
+    "eslint-plugin-svelte": "^3.23.0",
+    "globals": "^17.11.0",
+    "jsdom": "^30.0.1",
+    "prettier": "^3.9.6",
+    "prettier-plugin-svelte": "^4.1.1",
+    "svelte": "^5.56.9",
+    "svelte-check": "^4.7.6",
+    "typescript": "~6.0.0",
+    "typescript-eslint": "^8.67.0",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
   }
 }

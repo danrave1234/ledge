@@ -2,7 +2,18 @@
   import { onMount } from "svelte";
   import Panel from "$lib/components/Panel.svelte";
   import Handle from "$lib/components/Handle.svelte";
-  import { ui, settings, hydrate, cacheClearSafe, updateAvailable } from "$lib/stores";
+  import {
+    ui,
+    settings,
+    updateSettings,
+    hydrate,
+    hydrationReady,
+    cacheClearSafe,
+    updateAvailable,
+    reconcileVersion,
+    refreshProviderAuth,
+    flushWrites,
+  } from "$lib/stores";
   import { expand, collapse, toggle, redock, setView } from "$lib/controller";
   import {
     isTauri,
@@ -13,8 +24,21 @@
     clearCache,
     checkForUpdates,
     onWindowBlur,
+    onGameFocus,
+    quitApp,
   } from "$lib/native";
+  import { fadeIn } from "$lib/motion";
+  import {
+    createNativeSettingsState,
+    initializeGameMode,
+    reconcileNativeSettings,
+  } from "$lib/native-settings";
   import { fade } from "svelte/transition";
+
+  /** Collapse delay after the pointer leaves, and the extra grace period while
+      the expand resize settles (a resize fires spurious mouseleave/enter). */
+  const COLLAPSE_MS = 250;
+  const RESIZE_GRACE_MS = 450;
 
   let expanded = $derived($ui.expanded);
   let resizing = $derived($ui.resizing);
@@ -22,18 +46,33 @@
   const preview = !tauri;
   let collapseTimer: ReturnType<typeof setTimeout> | null = null;
   let expandedAt = 0;
+  let root: HTMLDivElement;
+  let pointerInside = false;
 
   let lastPlacement = "";
   let lastDisplay: number | undefined = undefined;
-  let lastHotkey = "";
-  let lastAutostart: boolean | null = null;
-  let lastGameMode: boolean | null = null;
+  const nativeSettingsState = createNativeSettingsState();
+  let startupGameModeReady = $state(preview);
 
-  function onEnter() {
+  function cancelCollapse() {
     if (collapseTimer) {
       clearTimeout(collapseTimer);
       collapseTimer = null;
     }
+  }
+
+  /** Pointer entered the window. While expanded this just cancels a pending
+      collapse — it must NOT open the panel: the collapsed window is a strip
+      wider than the visible handle, so opening from here meant merely passing
+      near the handle expanded the widget. */
+  function onEnter() {
+    pointerInside = true;
+    cancelCollapse();
+  }
+
+  /** Pointer is on the handle mark itself — the only thing that hover-opens. */
+  function onHandleHover() {
+    cancelCollapse();
     if (!$ui.expanded && $settings.hoverOpen) {
       expandedAt = Date.now();
       expand();
@@ -41,23 +80,38 @@
   }
 
   function onLeave() {
+    pointerInside = false;
+    // Moving the mouse away must not close the panel while the user is typing
+    // or otherwise has a control selected. A real click outside is handled by
+    // the native window-blur listener below.
+    if (root.contains(document.activeElement)) return;
+    scheduleCollapse();
+  }
+
+  function scheduleCollapse() {
     if (collapseTimer) clearTimeout(collapseTimer);
     // The window resize on expand can spuriously fire mouseleave/enter — hold off
     // collapsing until the resize has settled, and let a real re-enter cancel it.
-    const cooldownLeft = Math.max(0, 450 - (Date.now() - expandedAt));
-    collapseTimer = setTimeout(() => collapse(), 250 + cooldownLeft);
+    const cooldownLeft = Math.max(0, RESIZE_GRACE_MS - (Date.now() - expandedAt));
+    collapseTimer = setTimeout(() => collapse(), COLLAPSE_MS + cooldownLeft);
+  }
+
+  function onFocusOut() {
+    // Focus may move directly between controls inside Perch. Wait until the
+    // browser has committed the new active element before deciding it is idle.
+    queueMicrotask(() => {
+      if (!pointerInside && !root.contains(document.activeElement)) scheduleCollapse();
+    });
   }
 
   onMount(() => {
     let cleanup = () => {};
     let unblur = () => {};
+    let ungame = () => {};
     (async () => {
-      // Show the widget first so persistence issues can never block startup.
       if (preview) {
         document.body.classList.add("preview");
         ui.update((u) => ({ ...u, expanded: true, pinned: true }));
-      } else {
-        collapse(true);
       }
 
       try {
@@ -65,6 +119,29 @@
       } catch (e) {
         console.error("hydrate failed", e);
       }
+
+      if (!preview) {
+        // The backend classifies the current foreground window before this
+        // resolves. Only then may the first dock make Perch visible.
+        try {
+          await initializeGameMode($settings.gameMode, nativeSettingsState, setGameMode);
+        } catch (e) {
+          console.error("initial game mode failed", e);
+        }
+        startupGameModeReady = true;
+        await collapse(true);
+      }
+
+      // First launch after an update: settings were migrated during hydrate;
+      // this clears the stale WebView cache and records the new version.
+      try {
+        await reconcileVersion();
+      } catch (e) {
+        console.error("version reconcile failed", e);
+      }
+
+      // Know what's connected before the model picker is first opened.
+      void refreshProviderAuth();
 
       // First run: open the panel so the login/onboarding shows.
       if (!preview && !$settings.onboarded) {
@@ -82,8 +159,16 @@
       }
 
       try {
-        cleanup = await onTray((a) => {
-          if (a === "settings") setView("settings");
+        cleanup = await onTray(async (a) => {
+          if (a === "quit") {
+            // Persist anything still queued, THEN exit. Rust force-exits after
+            // a short watchdog, so this can't leave the app un-quittable.
+            try {
+              await flushWrites();
+            } finally {
+              await quitApp();
+            }
+          } else if (a === "settings") setView("settings");
           else {
             ui.update((u) => ({ ...u, expanded: true, pinned: true }));
             redock();
@@ -100,6 +185,18 @@
           .catch(() => {});
       }
 
+      // A game took focus: collapse to the handle before the backend hides the
+      // window, so leaving the game doesn't reveal a stale open panel.
+      if (!preview) {
+        try {
+          ungame = await onGameFocus((inGame) => {
+            if (inGame) collapse(true);
+          });
+        } catch (e) {
+          console.error("game focus listen failed", e);
+        }
+      }
+
       // Click outside the widget → minimize, unless pinned or generating.
       if (!preview) {
         try {
@@ -112,21 +209,22 @@
     return () => {
       cleanup();
       unblur();
+      ungame();
     };
   });
 
   // React to settings changes (guarded so unrelated toggles don't thrash).
   $effect(() => {
     const s = $settings;
-    if (!tauri) return;
-    if (lastAutostart === null || s.autostart !== lastAutostart) {
-      lastAutostart = s.autostart;
-      setAutostart(s.autostart);
-    }
-    if (s.hotkey !== lastHotkey) {
-      lastHotkey = s.hotkey;
-      registerHotkey(s.hotkey, () => toggle());
-    }
+    if (!tauri || !startupGameModeReady) return;
+    reconcileNativeSettings($hydrationReady, s, nativeSettingsState, {
+      setAutostart,
+      registerHotkey: (hotkey) => void registerHotkey(hotkey, () => toggle()),
+      setGameMode: (enabled) => void setGameMode(enabled),
+      // Trust the OS, not our stored flag: if the registry write is refused the
+      // toggle must not keep claiming Perch launches at login.
+      correctAutostart: (autostart) => updateSettings({ autostart }),
+    });
     if (
       (lastPlacement && s.placement !== lastPlacement) ||
       (lastDisplay !== undefined && s.display !== lastDisplay)
@@ -135,23 +233,26 @@
     }
     lastPlacement = s.placement;
     lastDisplay = s.display;
-    if (s.gameMode !== lastGameMode) {
-      lastGameMode = s.gameMode;
-      setGameMode(s.gameMode);
-    }
   });
 </script>
 
-<div class="root" role="presentation" onmouseenter={onEnter} onmouseleave={onLeave}>
+<div
+  bind:this={root}
+  class="root"
+  role="presentation"
+  onmouseenter={onEnter}
+  onmouseleave={onLeave}
+  onfocusout={onFocusOut}
+>
   {#if resizing}
     <!-- Window is mid-resize: draw nothing so neither the panel nor the handle
          is painted at the wrong size (that produced ghost bars and flicker). -->
   {:else if expanded}
-    <div class="shell" class:preview in:fade={{ duration: 120 }}>
+    <div class="shell" class:preview in:fade={fadeIn}>
       <Panel />
     </div>
   {:else}
-    <Handle />
+    <Handle onhover={onHandleHover} />
   {/if}
 </div>
 
@@ -164,6 +265,8 @@
     width: 100%;
     height: 100%;
   }
+  /* Browser preview has no native window: fake the docked panel's size.
+     Matches PANEL_TOP_W / PANEL_TOP_H in src-tauri/src/window.rs. */
   .shell.preview {
     position: absolute;
     top: 0;

@@ -23,11 +23,25 @@ export const BUILTIN_PLUGINS: PerchPlugin[] = [
     icon: "screen",
   },
   {
+    id: "music",
+    name: "Music",
+    description:
+      "See what you're listening to and control playback — Spotify, YouTube Music, a browser tab, any player. Controlling playback needs the Music toggle on.",
+    icon: "music",
+  },
+  {
     id: "job-analyzer",
     name: "Job analyzer",
     description:
       "Surface the “Is this job applicable?” quick action for assessing a posting against your background.",
     icon: "user",
+  },
+  {
+    id: "computer-control",
+    name: "Computer control",
+    description:
+      "Let Perch prepare text for the field you were using, then insert it only after you approve the exact target and text.",
+    icon: "screen",
   },
 ];
 
@@ -41,15 +55,12 @@ export function pluginEnabled(
 
 // Core plugins ship with the app and are installed by default (still toggleable,
 // but not removable). Everything else uses the install-to-enable model.
-export const CORE_PLUGINS = ["web-search", "screen-context"];
+const CORE_PLUGINS = ["web-search", "screen-context"];
 export function isCorePlugin(id: string): boolean {
   return CORE_PLUGINS.includes(id);
 }
 
-export function pluginInstalled(
-  installed: string[] | undefined,
-  id: string,
-): boolean {
+export function pluginInstalled(installed: string[] | undefined, id: string): boolean {
   return isCorePlugin(id) || (installed ?? []).includes(id);
 }
 

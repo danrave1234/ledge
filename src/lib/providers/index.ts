@@ -13,4 +13,4 @@ export function getProvider(id: string): Provider {
   return providers.find((p) => p.id === id) ?? providers[0] ?? mockProvider;
 }
 
-export type { Provider, ModelInfo, StreamOpts } from "./types";
+export type { Provider, ModelInfo } from "./types";

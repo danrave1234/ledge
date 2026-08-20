@@ -36,9 +36,16 @@
       '<ellipse cx="12" cy="5.5" rx="7.2" ry="2.8"/><path d="M4.8 5.5v6c0 1.55 3.2 2.8 7.2 2.8s7.2-1.25 7.2-2.8v-6"/><path d="M4.8 11.5v6c0 1.55 3.2 2.8 7.2 2.8s7.2-1.25 7.2-2.8v-6"/>',
     download:
       '<path d="M12 3.5v11"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4.5 19.5h15"/>',
-    sparkles:
-      '<path d="M12 3l1.7 4.8L18 9.5l-4.3 1.7L12 16l-1.7-4.8L6 9.5l4.3-1.7z"/>',
+    sparkles: '<path d="M12 3l1.7 4.8L18 9.5l-4.3 1.7L12 16l-1.7-4.8L6 9.5l4.3-1.7z"/>',
     "arrow-right": '<path d="M5 12h14"/><path d="M12 5l7 7-7 7"/>',
+    power: '<path d="M12 3.5v8"/><path d="M7.3 6.7a7 7 0 1 0 9.4 0"/>',
+    music:
+      '<path d="M9 17.5V5.5l10-2v12"/><ellipse cx="6.5" cy="17.5" rx="2.5" ry="2"/><ellipse cx="16.5" cy="15.5" rx="2.5" ry="2"/>',
+    play: '<path d="M8 5.5l10 6.5-10 6.5z"/>',
+    pause:
+      '<rect x="8" y="5.5" width="3" height="13" rx="1.2"/><rect x="13" y="5.5" width="3" height="13" rx="1.2"/>',
+    next: '<path d="M6.5 6l7.5 6-7.5 6z"/><path d="M17.5 6v12"/>',
+    previous: '<path d="M17.5 6L10 12l7.5 6z"/><path d="M6.5 6v12"/>',
   };
 </script>
 
@@ -51,4 +58,10 @@
   stroke-width="1.75"
   stroke-linecap="round"
   stroke-linejoin="round"
-  aria-hidden="true">{@html P[name] ?? ""}</svg>
+  aria-hidden="true"
+>
+  <!-- Safe: `P` is a hardcoded table of SVG path data in this file and `name`
+       only selects from it. No user, model, or network content reaches here. -->
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+  {@html P[name] ?? ""}
+</svg>

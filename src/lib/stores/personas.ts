@@ -5,7 +5,7 @@ import { settings } from "./settings";
 
 export const customPersonas = writable<Persona[]>([]);
 
-export function allPersonas(): Persona[] {
+function allPersonas(): Persona[] {
   return [...BUILTIN_PERSONAS, ...get(customPersonas)];
 }
 

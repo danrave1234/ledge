@@ -1,15 +1,20 @@
 mod codex;
+mod computer_control;
+mod http;
+mod media;
 mod provider;
 mod screen;
 mod secrets;
+mod spotify;
 mod store;
 mod web;
 mod window;
+mod youtube;
 
 use tauri::{
+    Emitter, Manager,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconBuilder,
-    Emitter,
 };
 use tauri_plugin_autostart::MacosLauncher;
 
@@ -33,13 +38,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             window::dock_window,
             window::list_monitors,
-            window::show_panel,
-            window::hide_panel,
             window::set_game_mode,
+            window::quit_app,
             window::clear_cache,
             window::set_capture_exclusion,
             provider::openai_stream,
-            provider::openai_cancel,
+            provider::cancel_stream,
             provider::openai_list_models,
             codex::codex_available,
             codex::codex_exec,
@@ -47,15 +51,33 @@ pub fn run() {
             codex::codex_logged_in,
             codex::codex_logout,
             web::web_search,
-            screen::capture_screen,
+            media::media_sessions,
+            media::media_control,
+            media::media_watch,
+            spotify::spotify_connect,
+            spotify::spotify_connected,
+            spotify::spotify_disconnect,
+            spotify::spotify_request,
             screen::capture_context,
+            computer_control::computer_target,
+            computer_control::computer_insert_text,
             secrets::set_api_key,
             secrets::has_api_key,
             secrets::clear_api_key,
+            secrets::set_youtube_key,
+            youtube::youtube_search,
+            youtube::youtube_has_key,
             store::store_read,
             store::store_write,
+            store::store_delete,
+            store::asset_store,
+            store::asset_read,
+            store::asset_delete,
         ])
         .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                computer_control::track_external_focus(&window);
+            }
             let open_i = MenuItemBuilder::with_id("open", "Open Perch").build(app)?;
             let settings_i = MenuItemBuilder::with_id("settings", "Settings").build(app)?;
             let quit_i = MenuItemBuilder::with_id("quit", "Quit Perch").build(app)?;
@@ -71,7 +93,18 @@ pub fn run() {
             }
             let _tray = tray
                 .on_menu_event(|app, event| match event.id().as_ref() {
-                    "quit" => app.exit(0),
+                    // Don't exit here: the frontend may still hold queued
+                    // writes (a setting changed moments ago). Ask it to flush
+                    // and call `quit_app`; the watchdog exits anyway if the
+                    // WebView is wedged, so Quit can never hang.
+                    "quit" => {
+                        let _ = app.emit("perch://quit", ());
+                        let handle = app.clone();
+                        std::thread::spawn(move || {
+                            std::thread::sleep(std::time::Duration::from_millis(1500));
+                            handle.exit(0);
+                        });
+                    }
                     "open" => {
                         let _ = app.emit("perch://open", ());
                     }

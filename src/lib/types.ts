@@ -1,4 +1,29 @@
-export type Role = "system" | "user" | "assistant";
+type Role = "system" | "user" | "assistant";
+
+/** Follow-up affordance rendered under an assistant message. */
+type MsgAction = "auth";
+
+/** A web result the reply was grounded in. Kept on the message so the citation
+    list survives a reload and stays tied to the answer it supports. */
+interface Source {
+  title: string;
+  snippet: string;
+  url: string;
+}
+
+/** An interactive result attached to a message by a tool.
+ *
+ *  `type` selects the renderer (see lib/cards.ts); `data` is whatever that
+ *  renderer expects. Persisted with the conversation, so the buttons still work
+ *  after a reload.
+ *
+ *  `data` routinely holds remote text — track titles, playlist names — so a
+ *  renderer must display it through normal Svelte templating, which escapes.
+ *  Never `{@html}`. */
+export interface MsgCard {
+  type: string;
+  data: unknown;
+}
 
 export interface Msg {
   id: string;
@@ -7,9 +32,15 @@ export interface Msg {
   usedScreen?: boolean;
   usedWeb?: boolean;
   image?: string;
+  /** App-data asset id. `image` is hydrated at runtime and omitted from JSON. */
+  imageRef?: string;
   ts: number;
   error?: boolean;
-  action?: string;
+  action?: MsgAction;
+  /** Numbered web sources backing this reply; index + 1 is the citation number. */
+  sources?: Source[];
+  /** Interactive cards produced by tools this turn, in the order they ran. */
+  cards?: MsgCard[];
 }
 
 export interface Conversation {
@@ -19,11 +50,47 @@ export interface Conversation {
   messages: Msg[];
   createdAt: number;
   updatedAt: number;
+  /** Running notes standing in for turns too old to send verbatim. */
+  summary?: string;
+  /** Id of the last message folded into `summary`; everything up to and
+      including it is represented by the notes rather than the transcript. */
+  summarizedThrough?: string;
 }
 
 export type Placement = "top" | "left" | "right";
 export type HandleStyle = "bar" | "spark" | "pulse";
 export type ThemeMode = "system" | "light" | "dark";
+
+/** Reasoning effort; "" means "let the provider decide". */
+export type Effort = "" | "none" | "low" | "medium" | "high" | "xhigh" | "max";
+
+export const EFFORTS: Effort[] = ["", "none", "low", "medium", "high", "xhigh", "max"];
+export const EFFORT_LABELS: Record<Effort, string> = {
+  "": "Auto",
+  none: "None",
+  low: "Low",
+  medium: "Med",
+  high: "High",
+  xhigh: "X-High",
+  max: "Max",
+};
+
+/** Permissions granted for one send only. They are deliberately not part of
+ * Settings, so a capability can never remain authorized after a turn or an
+ * app restart. */
+export interface TurnConsent {
+  web: boolean;
+  screen: boolean;
+  music: boolean;
+}
+
+/** The exact user-reviewed capture a screen tool may return this turn. */
+export interface ApprovedScreen {
+  image: string;
+  text?: string;
+  /** Redaction invalidates OCR because it may contain text hidden in the image. */
+  redacted?: boolean;
+}
 
 export interface Persona {
   id: string;
@@ -34,25 +101,34 @@ export interface Persona {
 
 export interface Settings {
   schemaVersion?: number; // bumped for one-time settings migrations
+  /** App version that last wrote this store — drives post-update tasks. */
+  lastVersion?: string;
+  /** Stable random, privacy-preserving identifier sent to API safety systems. */
+  safetyId: string;
   placement: Placement;
   display?: number; // chosen monitor index (multi-monitor); undefined = auto
   handle: HandleStyle;
   providerId: string;
   model: string;
-  effort: string;
+  effort: Effort;
   personaId: string;
   theme: ThemeMode;
   hoverOpen: boolean;
   autostart: boolean;
   hotkey: string;
-  webSearch: boolean;
-  screenContext: boolean;
+  /** True once the user has agreed to let Perch control playback. */
+  musicConfirmed: boolean;
   gameMode: boolean;
   clearCacheOnLaunch: boolean;
   plugins: Record<string, boolean>;
   installedPlugins: string[];
   customModels: string[];
-  customCss: string;
+  /** Last model the user picked for each provider, so switching provider and
+      coming back restores their choice instead of the provider default. */
+  modelByProvider: Record<string, string>;
+  /** Cached live model list from the provider's API, so the picker still offers
+      the real IDs after a restart instead of falling back to the static list. */
+  fetchedModels: string[];
   accent: string;
   onboarded: boolean;
   // ChatGPT-style personalization (shared by every provider)
