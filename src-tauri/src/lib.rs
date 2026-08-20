@@ -1,5 +1,6 @@
 mod codex;
 mod computer_control;
+mod document;
 mod http;
 mod media;
 mod provider;
@@ -35,6 +36,8 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             window::dock_window,
             window::list_monitors,
@@ -59,8 +62,11 @@ pub fn run() {
             spotify::spotify_disconnect,
             spotify::spotify_request,
             screen::capture_context,
+            screen::crop_context,
             computer_control::computer_target,
             computer_control::computer_insert_text,
+            computer_control::computer_navigate_browser,
+            computer_control::computer_run_actions,
             secrets::set_api_key,
             secrets::has_api_key,
             secrets::clear_api_key,
@@ -73,6 +79,7 @@ pub fn run() {
             store::asset_store,
             store::asset_read,
             store::asset_delete,
+            document::extract_document,
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {

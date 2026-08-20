@@ -54,6 +54,24 @@ serialized per key, and awaited on explicit quit. Browser preview uses localStor
 Disabled optional plugins must not start background watchers. The media watcher runs
 only while Music is active.
 
+### Packaged Windows measurement
+
+CI builds the release NSIS package on `windows-latest`, launches the unpackaged release
+executable three times, and measures cold start from process creation until a Win32
+window handle owned by the process appears (including Perch's initially hidden handle).
+On the final launch it waits five seconds, takes seven
+private-memory samples at 500 ms intervals, and records their median. Installer size is
+the produced NSIS executable size; every launch must remain alive and expose its handle.
+
+`scripts/measure-performance.ps1` writes raw samples and comparisons to JSON. It gates
+the medians against `scripts/performance-baseline.json` (20% cold-start, 15% memory, and
+10% installer tolerances) and independently enforces the 1.5 s, 60 MB, and 10 MB absolute
+targets above. CI uploads the JSON, log, and installer even when a gate fails. Reproduce
+the comparison logic without building via `./scripts/test-performance-comparison.ps1`;
+the test includes both a passing measurement and an intentionally regressed fixture.
+The checked-in `windows-latest-x64` baseline medians are 1.2 s cold start, 40 MiB idle
+private memory, and 8.5 MiB installer size; update them only from retained CI measurements.
+
 ## Product boundaries
 
 - Perch is not a sandbox for arbitrary third-party code. “Plugin” currently means a
@@ -62,8 +80,8 @@ only while Music is active.
 - The Codex provider shells out to the user's official CLI and never reuses internal
   auth files. A distributed product should default to BYO API key or a hosted backend,
   not consumer subscription authentication.
-- Screen capture currently covers the chosen display. Active-window and selected-region
-  capture modes are future work; local redaction is available now.
+- Screen capture supports the docked display, the last external active window, and a
+  selected physical-pixel region reviewed before one-turn consent.
 
 ## Quality bar
 
@@ -74,8 +92,4 @@ Rust formatting/clippy/tests, and dependency audits. Releases are signed from CI
 
 ## Next candidates
 
-- Active-window and selected-region screen capture.
-- Searchable/exportable conversation history.
-- File attachments beyond images.
-- Measured launch, memory, and packaged-app smoke benchmarks in CI.
 - A hosted provider path suitable for a distributed commercial build.

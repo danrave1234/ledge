@@ -1,6 +1,6 @@
 {
   "name": "perch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Perch — an edge-docked AI assistant widget for Windows",
   "private": true,
   "type": "module",
@@ -33,6 +33,8 @@
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-autostart": "^2.5.1",
+    "@tauri-apps/plugin-dialog": "^2.7.2",
+    "@tauri-apps/plugin-fs": "^2.5.1",
     "@tauri-apps/plugin-global-shortcut": "^2.3.2",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-process": "^2.3.1",
@@ -41,14 +43,14 @@
     "marked": "^18.0.9"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@sveltejs/adapter-static": "^3.0.6",
     "@axe-core/playwright": "^4.13.0",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
-    "@typescript/native": "npm:typescript@^7.0.2",
+    "@sveltejs/adapter-static": "^3.0.6",
     "@sveltejs/kit": "^2.70.2",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tauri-apps/cli": "^2",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^10.8.1",
     "eslint-plugin-svelte": "^3.23.0",
     "globals": "^17.11.0",

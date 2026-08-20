@@ -3,11 +3,17 @@
 All notable changes are documented here. Perch follows Semantic Versioning once
 it reaches its first stable release.
 
-## Unreleased
+## 0.1.1 - 2026-08-21
 
 - Added the optional Computer control plugin for approval-gated text insertion
   into the last focused Windows app. Perch previews the exact target and text;
-  insertion never submits, sends, clicks, or uploads anything.
+  insertion itself never submits, sends, or uploads anything.
+- Added approval-gated browser navigation. Perch previews the exact HTTP(S)
+  address, revalidates the previously focused supported browser, and navigates
+  only after the user presses Open.
+- Added approval-gated visual action plans for clicks, text, common navigation keys,
+  and scrolling. Plans are bounded, shown step-by-step, and tied to the exact last
+  focused window; sensitive and arbitrary keyboard actions remain unavailable.
 - Kept the widget expanded while its chat input or another control has focus,
   with normal auto-hide resuming after both pointer and focus leave.
 - Made independent tool calls execute concurrently while preserving model-visible

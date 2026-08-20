@@ -50,7 +50,7 @@ only after hydration, so defaults cannot overwrite existing files.
 | `provider.rs`         | Responses API request, SSE parser, models, request cancellation    |
 | `codex.rs`            | supported Codex CLI availability/login/status/logout/exec commands |
 | `screen.rs`           | chosen-display capture and Windows OCR                             |
-| `computer_control.rs` | last external window tracking and approved Unicode insertion       |
+| `computer_control.rs` | tracked-window validation and approved keyboard/pointer actions    |
 | `web.rs`              | bounded DuckDuckGo search and parsing                              |
 | `media.rs`            | Windows media sessions, control, and opt-in watcher                |
 | `spotify.rs`          | PKCE and allowlisted Spotify API proxy                             |
@@ -67,7 +67,7 @@ only after hydration, so defaults cannot overwrite existing files.
 | OpenAI  | `openai_stream`, `openai_list_models`, `cancel_stream`                                                                                                |
 | Codex   | `codex_available`, `codex_login`, `codex_logged_in`, `codex_logout`, `codex_exec`                                                                     |
 | Context | `capture_context`, `web_search`                                                                                                                       |
-| Control | `computer_target`, `computer_insert_text`                                                                                                             |
+| Control | `computer_target`, `computer_insert_text`, `computer_navigate_browser`, `computer_run_actions`                                                        |
 | Media   | `media_sessions`, `media_control`, `media_watch`; `perch://now-playing`                                                                               |
 | Spotify | `spotify_connect`, `spotify_connected`, `spotify_disconnect`, `spotify_request`                                                                       |
 | YouTube | `youtube_search`, `youtube_has_key`, `set_youtube_key`                                                                                                |
@@ -93,8 +93,12 @@ Svelte escaping. Web, screen, and media text are marked as untrusted data in mod
 context. External links open through the system opener. The WebView uses a restrictive
 CSP; OAuth/API tokens stay in Rust and Spotify paths are allowlisted.
 
-Computer control is deliberately narrower than general desktop automation. Its tool
-creates an approval card containing the exact text and last external window title; no
-input occurs until the user presses Insert. Rust then revalidates that tracked window,
-focuses it, verifies foreground ownership, and emits bounded Unicode keyboard input.
-There are no click, submit, send, upload, or arbitrary-key commands.
+Computer control creates approval cards containing the exact target and proposed
+operation; no input occurs before the user approves. Rust revalidates the tracked
+window, focuses it, verifies foreground ownership, and independently validates every
+action. Text insertion emits bounded Unicode input. Browser navigation accepts only
+HTTP(S), verifies a browser-process allowlist, and drives the address bar. Visual plans
+contain at most 12 clicks, text steps, allowlisted navigation keys, or bounded scrolls;
+click coordinates are normalized to and resolved inside the approved window. Send,
+submit, purchase, delete, authentication, passwords, arbitrary shortcuts, elevated
+windows, UAC, and secure desktop remain outside the boundary.
