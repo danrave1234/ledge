@@ -1,6 +1,11 @@
 import { writable, get } from "svelte/store";
 import type { Msg, Conversation } from "../types";
+import { truncate } from "../format";
 import { uid } from "./persistence";
+import { deleteMessageAssets } from "../assets";
+
+/** Longest fallback title generated from the first user message. */
+const TITLE_MAX = 48;
 
 export const conversations = writable<Conversation[]>([]);
 export const messages = writable<Msg[]>([]);
@@ -17,7 +22,7 @@ export function saveActive() {
   const id = get(activeId) ?? uid();
   activeId.set(id);
   const firstUser = msgs.find((m) => m.role === "user");
-  const title = (firstUser?.content ?? "New chat").slice(0, 48);
+  const title = truncate(firstUser?.content || "New chat", TITLE_MAX);
   const now = Date.now();
   conversations.update((list) => {
     const existing = list.find((c) => c.id === id);
@@ -35,6 +40,24 @@ export function saveActive() {
   });
 }
 
+/** Store the compaction notes and how far they cover. */
+export function setConversationSummary(
+  id: string,
+  summary: string,
+  summarizedThrough: string,
+) {
+  conversations.update((list) =>
+    list.map((c) => (c.id === id ? { ...c, summary, summarizedThrough } : c)),
+  );
+}
+
+/** Notes for the active conversation, if it has been compacted. */
+export function activeSummary(): { summary?: string; summarizedThrough?: string } {
+  const id = get(activeId);
+  const conv = id ? get(conversations).find((c) => c.id === id) : undefined;
+  return { summary: conv?.summary, summarizedThrough: conv?.summarizedThrough };
+}
+
 export function setConversationTitle(id: string, title: string) {
   conversations.update((list) =>
     list.map((c) => (c.id === id ? { ...c, title, titled: true } : c)),
@@ -49,11 +72,18 @@ export function openConversation(id: string) {
 }
 
 export function deleteConversation(id: string) {
-  conversations.update((list) => list.filter((c) => c.id !== id));
+  conversations.update((list) => {
+    const removed = list.find((c) => c.id === id);
+    if (removed) deleteMessageAssets(removed.messages);
+    return list.filter((c) => c.id !== id);
+  });
   if (get(activeId) === id) newChat();
 }
 
 export function clearHistory() {
-  conversations.set([]);
+  conversations.update((list) => {
+    for (const conversation of list) deleteMessageAssets(conversation.messages);
+    return [];
+  });
   newChat();
 }

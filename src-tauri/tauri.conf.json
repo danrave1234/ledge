@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.perch.assistant",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "vite dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "vite build",
     "frontendDist": "../build"
   },
   "app": {
@@ -14,8 +14,8 @@
       {
         "label": "main",
         "title": "Perch",
-        "width": 76,
-        "height": 22,
+        "width": 180,
+        "height": 14,
         "resizable": false,
         "decorations": false,
         "transparent": true,
@@ -30,7 +30,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data: blob: https:; font-src 'self' data:; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'"
     }
   },
   "bundle": {

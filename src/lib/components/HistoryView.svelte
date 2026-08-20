@@ -1,23 +1,10 @@
 <script lang="ts">
-  import Icon from "./Icon.svelte";
-  import {
-    conversations,
-    openConversation,
-    deleteConversation,
-  } from "../stores";
-  import { setView } from "../controller";
+  import Icon from "$lib/components/Icon.svelte";
+  import { conversations, openConversation, deleteConversation } from "$lib/stores";
+  import { setView } from "$lib/controller";
+  import { relativeTime } from "$lib/format";
 
   let list = $derived($conversations);
-
-  function rel(ts: number): string {
-    const d = Date.now() - ts;
-    const m = Math.floor(d / 60000);
-    if (m < 1) return "just now";
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
-  }
 
   function open(id: string) {
     openConversation(id);
@@ -33,12 +20,15 @@
       <div class="row">
         <button class="main" onclick={() => open(c.id)}>
           <span class="title">{c.title}</span>
-          <span class="meta">{c.messages.length} messages · {rel(c.updatedAt)}</span>
+          <span class="meta">
+            {c.messages.length} messages · {relativeTime(c.updatedAt)}
+          </span>
         </button>
         <button
           class="icon-btn"
           aria-label="Delete"
-          onclick={() => deleteConversation(c.id)}>
+          onclick={() => deleteConversation(c.id)}
+        >
           <Icon name="trash" size={15} />
         </button>
       </div>
@@ -56,14 +46,15 @@
     color: var(--text-3);
     text-align: center;
     margin-top: 40px;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .row {
     display: flex;
     align-items: center;
     gap: 4px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     padding: 2px;
+    transition: background var(--dur) var(--ease);
   }
   .row:hover {
     background: var(--surface-2);
@@ -77,18 +68,19 @@
     border: none;
     background: transparent;
     color: var(--text);
+    font-family: inherit;
     text-align: left;
     cursor: pointer;
     min-width: 0;
   }
   .title {
-    font-size: 13px;
+    font-size: var(--fs-md);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .meta {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--text-3);
   }
 </style>

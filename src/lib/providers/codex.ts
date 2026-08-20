@@ -1,51 +1,42 @@
-import type { Provider, ModelInfo, StreamOpts } from "./types";
-import { isTauri } from "../native";
+import type { Provider, StreamOpts } from "./types";
+import { isTauri, codexAvailable, codexLoggedIn, streamOverChannel } from "../native";
+import { CODEX_FALLBACK_MODELS as MODELS } from "./models";
 
-const MODELS: ModelInfo[] = [
-  { id: "codex-default", label: "Codex default" },
-  { id: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
-  { id: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
-  { id: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
-];
-
-type ChatEvent =
-  | { type: "delta"; delta: string }
-  | { type: "done" }
-  | { type: "error"; message: string };
-
+// Fallback list only — see the note in openai.ts. "codex-default" lets the CLI
+// pick whatever model the user's Codex config already uses.
 // Bridge to the official Codex CLI (uses the user's `codex login` / Sign in with
 // ChatGPT). Codex `exec` takes a single prompt, so the conversation is flattened.
 export const codexProvider: Provider = {
   id: "codex",
   label: "Codex CLI",
-  requiresAuth: true,
+  defaultModel: MODELS[0].id,
   async listModels() {
     return MODELS;
   },
   async isAuthed() {
-    if (!isTauri()) return false;
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      return await invoke<boolean>("codex_logged_in");
-    } catch {
-      return false;
-    }
+    return isTauri() && (await codexAvailable()) && (await codexLoggedIn());
   },
+  // `codex exec` takes one prompt and returns one answer — there is no protocol
+  // for handing a tool call back mid-turn. Perch pre-fetches context for this
+  // provider instead (see controller.ts).
+  supportsTools: false,
   async stream(opts: StreamOpts) {
     if (!isTauri()) {
       throw new Error("The Codex bridge requires the desktop app.");
     }
-    const { invoke, Channel } = await import("@tauri-apps/api/core");
-    const available = await invoke<boolean>("codex_available").catch(() => false);
-    if (!available) {
+    if (!(await codexAvailable())) {
       throw new Error(
         "Codex CLI not found. Install it (npm i -g @openai/codex) and run `codex login`, then reopen Perch.",
       );
     }
-    const loggedIn = await invoke<boolean>("codex_logged_in").catch(() => false);
-    if (!loggedIn) {
+    if (!(await codexLoggedIn())) {
+      // Be specific about WHAT is not signed in: being signed into ChatGPT in a
+      // browser, or into the Codex IDE extension, is a separate session from the
+      // CLI's — so "but I am logged in" is a reasonable thing to think here.
       throw new Error(
-        "Not signed in to Codex. Use the Sign in button (or run `codex login`), then try again.",
+        "The Codex CLI itself isn't signed in (`codex login status` reports Not logged in). " +
+          "Being signed into ChatGPT in your browser or IDE is a separate session. " +
+          "Run `codex login` in a terminal, or use Sign in with Codex in Settings → Account.",
       );
     }
 
@@ -55,34 +46,10 @@ export const codexProvider: Provider = {
         .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
         .join("\n\n");
 
-    const channel = new Channel<ChatEvent>();
-    await new Promise<void>((resolve, reject) => {
-      let settled = false;
-      const done = () => {
-        if (!settled) {
-          settled = true;
-          resolve();
-        }
-      };
-      const fail = (m: string) => {
-        if (!settled) {
-          settled = true;
-          reject(new Error(m));
-        }
-      };
-      channel.onmessage = (msg) => {
-        if (opts.signal?.aborted) return done();
-        if (msg.type === "delta") opts.onDelta(msg.delta);
-        else if (msg.type === "done") done();
-        else if (msg.type === "error") fail(msg.message);
-      };
-      opts.signal?.addEventListener("abort", done);
-      invoke("codex_exec", {
-        prompt,
-        model: opts.model ?? "",
-        effort: opts.effort ?? "",
-        onEvent: channel,
-      }).catch((e) => fail(String(e)));
-    });
+    await streamOverChannel(
+      "codex_exec",
+      { prompt, model: opts.model ?? "", effort: opts.effort ?? "" },
+      opts,
+    );
   },
 };

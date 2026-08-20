@@ -1,13 +1,13 @@
 <script lang="ts">
-  import HeaderBar from "./HeaderBar.svelte";
-  import ChatView from "./ChatView.svelte";
-  import SettingsView from "./SettingsView.svelte";
-  import HistoryView from "./HistoryView.svelte";
-  import PersonasView from "./PersonasView.svelte";
-  import PluginsView from "./PluginsView.svelte";
-  import Canvas from "./Canvas.svelte";
-  import Onboarding from "./Onboarding.svelte";
-  import { ui, settings } from "../stores";
+  import HeaderBar from "$lib/components/HeaderBar.svelte";
+  import ChatView from "$lib/components/ChatView.svelte";
+  import SettingsView from "$lib/components/SettingsView.svelte";
+  import HistoryView from "$lib/components/HistoryView.svelte";
+  import PersonasView from "$lib/components/PersonasView.svelte";
+  import Canvas from "$lib/components/Canvas.svelte";
+  import Onboarding from "$lib/components/Onboarding.svelte";
+  import { ui, settings } from "$lib/stores";
+  import { fadeIn } from "$lib/motion";
   import { fade } from "svelte/transition";
 
   let view = $derived($ui.view);
@@ -21,15 +21,13 @@
     <ChatView />
   {:else}
     {#key view}
-      <div class="subview" in:fade={{ duration: 130 }}>
+      <div class="subview" in:fade={fadeIn}>
         {#if view === "settings"}
           <SettingsView />
         {:else if view === "history"}
           <HistoryView />
         {:else if view === "personas"}
           <PersonasView />
-        {:else if view === "plugins"}
-          <PluginsView />
         {/if}
       </div>
     {/key}
@@ -52,6 +50,7 @@
     overflow: hidden;
     position: relative;
   }
+  /* Round only the corners away from the docked edge. */
   .panel.top {
     border-radius: 0 0 var(--radius) var(--radius);
     border-top: none;

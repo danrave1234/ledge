@@ -1,33 +1,49 @@
-import type { Provider, ModelInfo, StreamOpts } from "./types";
-import { isTauri, hasApiKey } from "../native";
+import type { Provider, StreamOpts } from "./types";
+import { isTauri, hasApiKey, streamOverChannel } from "../native";
+import { OPENAI_FALLBACK_MODELS as MODELS } from "./models";
 
-const MODELS: ModelInfo[] = [
-  { id: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
-  { id: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
-  { id: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
-];
+// Fallback list only — the live list is fetched via `openai_list_models` and the
+// user can type any model ID (see ModelMenu). Do not treat this as canonical.
+function withImage(text: string, image: string): unknown {
+  return {
+    role: "user",
+    content: [
+      { type: "input_text", text },
+      { type: "input_image", image_url: image },
+    ],
+  };
+}
 
-type ChatEvent =
-  | { type: "delta"; delta: string }
-  | { type: "done" }
-  | { type: "error"; message: string };
-
-function buildMessages(opts: StreamOpts): unknown[] {
+/** Map the provider-neutral transcript to Responses API input items. */
+function buildInput(opts: StreamOpts): unknown[] {
   const out: unknown[] = [];
-  if (opts.system) out.push({ role: "system", content: opts.system });
   opts.messages.forEach((m, i) => {
-    const lastUser = m.role === "user" && i === opts.messages.length - 1;
-    if (lastUser && opts.image) {
+    if (m.role === "tool") {
       out.push({
-        role: "user",
-        content: [
-          { type: "text", text: m.content },
-          { type: "image_url", image_url: { url: opts.image } },
-        ],
+        type: "function_call_output",
+        call_id: m.toolCallId,
+        output: m.content,
       });
-    } else {
-      out.push({ role: m.role, content: m.content });
+      return;
     }
+    if (m.role === "assistant" && m.toolCalls?.length) {
+      if (m.content) out.push({ role: "assistant", content: m.content });
+      for (const c of m.toolCalls) {
+        out.push({
+          type: "function_call",
+          call_id: c.id,
+          name: c.name,
+          arguments: c.arguments,
+        });
+      }
+      return;
+    }
+    // Per-message image (the screen tool attaches one mid-loop), else the
+    // turn-level attachment, which belongs to the final user message.
+    const lastUser = m.role === "user" && i === opts.messages.length - 1;
+    const image = m.image ?? (lastUser ? opts.image : undefined);
+    if (m.role === "user" && image) out.push(withImage(m.content, image));
+    else out.push({ role: m.role, content: m.content });
   });
   return out;
 }
@@ -35,50 +51,37 @@ function buildMessages(opts: StreamOpts): unknown[] {
 export const openaiProvider: Provider = {
   id: "openai",
   label: "OpenAI (API key)",
-  requiresAuth: true,
+  defaultModel: MODELS[0].id,
   async listModels() {
     return MODELS;
   },
   async isAuthed() {
     return await hasApiKey();
   },
+  supportsTools: true,
   async stream(opts: StreamOpts) {
     if (!isTauri()) {
       throw new Error(
         "Live models require the desktop app. Switch to the Mock provider in the browser preview.",
       );
     }
-    const { invoke, Channel } = await import("@tauri-apps/api/core");
-    const messages = buildMessages(opts);
-    const channel = new Channel<ChatEvent>();
-
-    await new Promise<void>((resolve, reject) => {
-      let settled = false;
-      const done = () => {
-        if (!settled) {
-          settled = true;
-          resolve();
-        }
-      };
-      const fail = (m: string) => {
-        if (!settled) {
-          settled = true;
-          reject(new Error(m));
-        }
-      };
-      channel.onmessage = (msg) => {
-        if (opts.signal?.aborted) return done();
-        if (msg.type === "delta") opts.onDelta(msg.delta);
-        else if (msg.type === "done") done();
-        else if (msg.type === "error") fail(msg.message);
-      };
-      opts.signal?.addEventListener("abort", done);
-      invoke("openai_stream", {
+    await streamOverChannel(
+      "openai_stream",
+      {
         model: opts.model,
-        messages,
+        input: buildInput(opts),
+        instructions: opts.system,
         effort: opts.effort ?? "",
-        onEvent: channel,
-      }).catch((e) => fail(String(e)));
-    });
+        safetyIdentifier: opts.safetyIdentifier,
+        tools: (opts.tools ?? []).map((t) => ({
+          type: "function",
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        })),
+      },
+      opts,
+      true,
+    );
   },
 };

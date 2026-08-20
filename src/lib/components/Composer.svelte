@@ -1,32 +1,54 @@
 <script lang="ts">
-  import Icon from "./Icon.svelte";
-  import { settings, ui, updateSettings } from "../stores";
-  import { pluginActive } from "../plugins";
-  import { send, stop } from "../controller";
+  import Icon from "$lib/components/Icon.svelte";
+  import ScreenPreview from "$lib/components/ScreenPreview.svelte";
+  import { settings, ui, updateSettings } from "$lib/stores";
+  import { pluginActive } from "$lib/plugins";
+  import { send, stop } from "$lib/controller";
+  import { EFFORTS, EFFORT_LABELS } from "$lib/types";
+  import type { ApprovedScreen, TurnConsent } from "$lib/types";
+  import { captureScreenshot } from "$lib/capture";
+
+  const MAX_TEXTAREA_H = 132;
 
   let text = $state("");
   let ta: HTMLTextAreaElement | undefined = $state();
   let fileInput: HTMLInputElement | undefined = $state();
   let attached = $state<string | null>(null);
+  let web = $state(false);
+  let screen = $state<ApprovedScreen | null>(null);
+  let music = $state(false);
+  let capturingScreen = $state(false);
   let s = $derived($settings);
   let generating = $derived($ui.generating);
 
-  const EFFORTS = ["", "low", "medium", "high"];
-  const EFFORT_LABELS: Record<string, string> = {
-    "": "Auto",
-    low: "Low",
-    medium: "Med",
-    high: "High",
-  };
+  // The music toggle is the one control that lets the assistant act outside its
+  // own window, so the first time it is switched on it asks. Afterwards the
+  // chip behaves like any other toggle.
+  let confirmingMusic = $state(false);
+
+  function toggleMusic() {
+    if (!music && !s.musicConfirmed) {
+      confirmingMusic = true;
+      return;
+    }
+    music = !music;
+  }
+
+  function allowMusic() {
+    confirmingMusic = false;
+    music = true;
+    updateSettings({ musicConfirmed: true });
+  }
+
   function cycleEffort() {
-    const i = EFFORTS.indexOf(s.effort ?? "");
+    const i = EFFORTS.indexOf(s.effort);
     updateSettings({ effort: EFFORTS[(i + 1) % EFFORTS.length] });
   }
 
   function autosize() {
     if (!ta) return;
     ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 132) + "px";
+    ta.style.height = Math.min(ta.scrollHeight, MAX_TEXTAREA_H) + "px";
   }
 
   async function submit() {
@@ -34,9 +56,38 @@
     if (!t.trim() && !attached) return;
     text = "";
     const img = attached;
+    const approved = screen;
+    const consent: TurnConsent = { web, screen: !!approved, music };
     attached = null;
+    screen = null;
+    web = false;
+    music = false;
     queueMicrotask(autosize);
-    await send(t, img ?? undefined);
+    await send(t, {
+      attachment: img ?? undefined,
+      consent,
+      approvedScreen: approved ?? undefined,
+    });
+  }
+
+  async function toggleScreen() {
+    if (screen) {
+      screen = null;
+      return;
+    }
+    await recaptureScreen();
+  }
+
+  async function recaptureScreen() {
+    if (capturingScreen) return;
+    capturingScreen = true;
+    attached = null;
+    try {
+      const cap = await captureScreenshot(s.display);
+      screen = cap.image ? { image: cap.image, text: cap.text } : null;
+    } finally {
+      capturingScreen = false;
+    }
   }
 
   function onKey(e: KeyboardEvent) {
@@ -49,6 +100,7 @@
     const input = e.target as HTMLInputElement;
     const f = input.files?.[0];
     if (f) {
+      screen = null;
       const reader = new FileReader();
       reader.onload = () => (attached = reader.result as string);
       reader.readAsDataURL(f);
@@ -58,6 +110,16 @@
 </script>
 
 <div class="composer">
+  {#if screen}
+    <ScreenPreview
+      image={screen.image}
+      onredact={(image) => (screen = { image, redacted: true })}
+      onremove={() => (screen = null)}
+      onrecapture={recaptureScreen}
+    />
+  {:else if capturingScreen}
+    <div class="capture-status" aria-live="polite">Capturing screen for review…</div>
+  {/if}
   {#if attached}
     <div class="att">
       <img src={attached} alt="attachment" />
@@ -83,30 +145,62 @@
         class="send"
         onclick={submit}
         disabled={!text.trim() && !attached}
-        aria-label="Send">
+        aria-label="Send"
+      >
         <Icon name="send" size={16} />
       </button>
     {/if}
   </div>
+  {#if confirmingMusic}
+    <div class="confirm">
+      <p>
+        Let Perch play, pause, and skip tracks in your music apps? It can only control
+        what's already playing.
+      </p>
+      <div class="confirm-actions">
+        <button class="btn btn-sm" onclick={() => (confirmingMusic = false)}>
+          Not now
+        </button>
+        <button class="btn btn-sm btn-accent" onclick={allowMusic}>Allow</button>
+      </div>
+    </div>
+  {/if}
   <div class="tools">
     {#if pluginActive(s, "web-search")}
-      <button class="tog" class:on={s.webSearch} onclick={() => updateSettings({ webSearch: !s.webSearch })}>
+      <button class="chip" class:on={web} aria-pressed={web} onclick={() => (web = !web)}>
         <Icon name="web" size={14} /> Web
       </button>
     {/if}
     {#if pluginActive(s, "screen-context")}
-      <button class="tog" class:on={s.screenContext} onclick={() => updateSettings({ screenContext: !s.screenContext })}>
+      <button
+        class="chip"
+        class:on={!!screen}
+        aria-pressed={!!screen}
+        disabled={capturingScreen}
+        onclick={toggleScreen}
+      >
         <Icon name="screen" size={14} /> Screen
       </button>
     {/if}
-    <button class="tog" onclick={() => fileInput?.click()}>
+    {#if pluginActive(s, "music")}
+      <button class="chip" class:on={music} aria-pressed={music} onclick={toggleMusic}>
+        <Icon name="music" size={14} /> Music
+      </button>
+    {/if}
+    <button class="chip" aria-pressed={!!attached} onclick={() => fileInput?.click()}>
       <Icon name="clip" size={14} /> Attach
     </button>
-    <button class="tog effort" class:on={s.effort} onclick={cycleEffort} title="Reasoning effort">
-      <Icon name="spark" size={13} /> {EFFORT_LABELS[s.effort ?? ""]}
+    <button
+      class="chip effort"
+      class:on={s.effort !== ""}
+      onclick={cycleEffort}
+      title="Reasoning effort"
+    >
+      <Icon name="spark" size={13} />
+      {EFFORT_LABELS[s.effort]}
     </button>
   </div>
-  <input bind:this={fileInput} type="file" accept="image/*" onchange={onFile} style="display:none" />
+  <input bind:this={fileInput} type="file" accept="image/*" onchange={onFile} hidden />
 </div>
 
 <style>
@@ -119,10 +213,15 @@
     display: inline-block;
     margin-bottom: 8px;
   }
+  .capture-status {
+    margin-bottom: 8px;
+    color: var(--text-2);
+    font-size: var(--fs-sm);
+  }
   .att img {
     max-height: 56px;
     max-width: 120px;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border-2);
     display: block;
   }
@@ -147,8 +246,9 @@
     gap: 8px;
     background: var(--surface-2);
     border: 1px solid var(--border);
-    border-radius: 13px;
+    border-radius: var(--radius-lg);
     padding: 4px 8px 4px 12px;
+    transition: border-color var(--dur) var(--ease);
   }
   .inputrow:focus-within {
     border-color: var(--accent);
@@ -161,9 +261,10 @@
     outline: none;
     color: var(--text);
     font-family: inherit;
-    font-size: 13.5px;
+    font-size: var(--fs-md);
     line-height: 20px;
     padding: 6px 0;
+    /* Keep in sync with MAX_TEXTAREA_H above. */
     max-height: 132px;
     user-select: text;
   }
@@ -172,9 +273,9 @@
   }
   .send {
     flex-shrink: 0;
-    width: 30px;
-    height: 30px;
-    border-radius: 9px;
+    width: var(--ctl-sm);
+    height: var(--ctl-sm);
+    border-radius: var(--radius-sm);
     border: none;
     background: var(--accent);
     color: var(--accent-on);
@@ -182,7 +283,9 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.15s, opacity 0.15s;
+    transition:
+      background var(--dur) var(--ease),
+      opacity var(--dur) var(--ease);
   }
   .send:hover {
     background: var(--accent-strong);
@@ -195,35 +298,31 @@
     background: var(--surface-3);
     color: var(--text);
   }
+  .confirm {
+    margin-top: 8px;
+    padding: 9px 11px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+  }
+  .confirm p {
+    margin: 0 0 8px;
+    font-size: var(--fs-sm);
+    color: var(--text-2);
+    line-height: var(--lh);
+  }
+  .confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+  }
   .tools {
     display: flex;
     gap: 6px;
     margin-top: 8px;
     flex-wrap: wrap;
   }
-  .tog {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    height: 26px;
-    padding: 0 9px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-3);
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .tog:hover {
-    color: var(--text-2);
-    border-color: var(--border-2);
-  }
-  .tog.on {
-    color: var(--accent-text);
-    background: var(--accent-weak);
-    border-color: transparent;
-  }
+  /* Reasoning effort sits apart from the context toggles. */
   .effort {
     margin-left: auto;
   }

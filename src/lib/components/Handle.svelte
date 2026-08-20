@@ -1,30 +1,62 @@
 <script lang="ts">
-  import Icon from "./Icon.svelte";
-  import { settings } from "../stores";
-  import { openPinned } from "../controller";
+  import Icon from "$lib/components/Icon.svelte";
+  import { settings } from "$lib/stores";
+  import { openPinned } from "$lib/controller";
+
+  let { onhover }: { onhover?: () => void } = $props();
 
   let s = $derived($settings);
   let vertical = $derived(s.placement !== "top");
 </script>
 
-<button
-  class="handle {s.placement} {s.handle}"
-  class:vertical
-  onclick={() => openPinned()}
-  aria-label="Open Perch">
-  {#if s.handle === "spark"}
-    <span class="chip"><Icon name="spark" size={15} /></span>
-  {:else if s.handle === "pulse"}
-    <span class="pulse"></span>
-  {:else}
-    <span class="bar"></span>
-  {/if}
-</button>
+<!-- The collapsed WINDOW is a strip wider than the mark, because the OS only
+     delivers pointer events inside the window rect. The interactive target is
+     this button, sized to the mark itself — so hover-open fires when the
+     pointer is on the handle, not merely near it. -->
+<div class="dock {s.placement}">
+  <!-- The handle STYLE goes on a data attribute, never into the class list: the
+       style names match the inner mark's classes (.bar/.pulse/.knob), so putting
+       `bar` on the button made the button itself paint a second, window-wide bar
+       behind the real one. -->
+  <button
+    class="handle"
+    class:vertical
+    data-mark={s.handle}
+    onmouseenter={() => onhover?.()}
+    onclick={() => openPinned()}
+    aria-label="Open Perch"
+  >
+    {#if s.handle === "spark"}
+      <span class="knob"><Icon name="spark" size={15} /></span>
+    {:else if s.handle === "pulse"}
+      <span class="pulse"></span>
+    {:else}
+      <span class="bar"></span>
+    {/if}
+  </button>
+</div>
 
 <style>
-  .handle {
+  /* Fills the window and parks the handle against the docked edge. */
+  .dock {
     width: 100%;
     height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Hug the docked screen edge — no gap (knob/bar peek from the edge). */
+  .dock.top {
+    align-items: flex-start;
+  }
+  .dock.left {
+    justify-content: flex-start;
+  }
+  .dock.right {
+    justify-content: flex-end;
+  }
+  /* Sized by its mark, never the window: this rect is the hover/click target. */
+  .handle {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -34,44 +66,37 @@
     padding: 0;
     -webkit-app-region: no-drag;
   }
-  /* Hug the docked screen edge — no gap (chip/bar peek from the edge). */
-  .handle.top {
-    align-items: flex-start;
-  }
-  .handle.left {
-    justify-content: flex-start;
-  }
-  .handle.right {
-    justify-content: flex-end;
-  }
   /* The pulse is a round dot: hugging the edge clips it, so keep it centered. */
-  .handle.pulse {
+  .dock:has(.handle[data-mark="pulse"]) {
     align-items: center;
     justify-content: center;
   }
-  .chip {
+  /* Named .knob, not .chip: `.chip` is a global primitive in tokens.css and
+     would bleed its pill styling into the handle. */
+  .knob {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 30px;
     height: 18px;
-    border-radius: 0 0 9px 9px;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
     background: var(--surface);
     border: 1px solid var(--border-2);
     border-top: none;
     color: var(--accent);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-sm);
+    transition: border-color var(--dur) var(--ease);
   }
-  .vertical .chip {
+  .vertical .knob {
     width: 18px;
     height: 30px;
   }
-  .handle.left .chip {
-    border-radius: 0 9px 9px 0;
+  .dock.left .knob {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     border-left: none;
   }
-  .handle.right .chip {
-    border-radius: 9px 0 0 9px;
+  .dock.right .knob {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
     border-right: none;
   }
   .pulse {
@@ -82,28 +107,33 @@
     box-shadow: 0 0 0 3px var(--accent-weak);
     animation: breathe 2.4s ease-in-out infinite;
   }
-  /* Ring peaks at 4px so the dot + ring fit inside the 22px handle (no clipping). */
+  /* Ring peaks at 4px so the dot + ring fit inside the handle (no clipping). */
   @keyframes breathe {
-    0%, 100% { box-shadow: 0 0 0 2px var(--accent-weak); }
-    50% { box-shadow: 0 0 0 4px var(--accent-weak); }
+    0%,
+    100% {
+      box-shadow: 0 0 0 2px var(--accent-weak);
+    }
+    50% {
+      box-shadow: 0 0 0 4px var(--accent-weak);
+    }
   }
   /* The bar runs ALONG the docked edge: horizontal on top, vertical on the
      sides. Keyed off placement directly so it can't disagree with the window. */
   .bar {
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--border-2);
-    transition: background 0.15s ease;
+    transition: background var(--dur) var(--ease);
   }
-  .handle.top .bar {
+  .dock.top .bar {
     width: 42px;
     height: 5px;
   }
-  .handle.left .bar,
-  .handle.right .bar {
+  .dock.left .bar,
+  .dock.right .bar {
     width: 5px;
     height: 42px;
   }
-  .handle:hover .chip {
+  .handle:hover .knob {
     border-color: var(--accent);
   }
   .handle:hover .bar {

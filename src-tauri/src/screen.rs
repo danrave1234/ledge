@@ -1,11 +1,24 @@
 use base64::Engine;
 use std::io::Cursor;
-use xcap::image::{DynamicImage, ImageFormat, RgbaImage};
 use xcap::Monitor;
+use xcap::image::{DynamicImage, ImageFormat, RgbaImage};
 
-fn primary() -> Result<Monitor, String> {
+/// Pick the monitor to capture: the display the widget is docked to when the
+/// user chose one, else the primary. Mirrors `window::pick_monitor`, so Perch
+/// captures the screen it is actually sitting on.
+fn pick(display: Option<usize>) -> Result<Monitor, String> {
     let monitors = Monitor::all().map_err(|e| e.to_string())?;
-    let idx = monitors.iter().position(|m| m.is_primary().unwrap_or(false));
+    if let Some(i) = display {
+        if let Some(m) = monitors.into_iter().nth(i) {
+            return Ok(m);
+        }
+        // Fall through on a stale index (monitor unplugged).
+        return pick(None);
+    }
+    let monitors = Monitor::all().map_err(|e| e.to_string())?;
+    let idx = monitors
+        .iter()
+        .position(|m| m.is_primary().unwrap_or(false));
     match idx {
         Some(i) => monitors
             .into_iter()
@@ -30,27 +43,6 @@ fn to_png_data_url(img: &RgbaImage) -> Result<String, String> {
 }
 
 #[derive(serde::Serialize)]
-pub struct Shot {
-    pub data_url: String,
-    pub width: u32,
-    pub height: u32,
-}
-
-/// Capture the primary monitor as a base64 PNG data URL.
-#[tauri::command]
-pub fn capture_screen() -> Result<Shot, String> {
-    let mon = primary()?;
-    let img = mon.capture_image().map_err(|e| e.to_string())?;
-    let (width, height) = (img.width(), img.height());
-    let data_url = to_png_data_url(&img)?;
-    Ok(Shot {
-        data_url,
-        width,
-        height,
-    })
-}
-
-#[derive(serde::Serialize)]
 pub struct ScreenContext {
     pub data_url: String,
     pub width: u32,
@@ -61,8 +53,8 @@ pub struct ScreenContext {
 /// Capture the screen AND OCR it to text, so text-only providers (Codex) can
 /// answer "what's on my screen" and vision providers get both image and text.
 #[tauri::command]
-pub fn capture_context() -> Result<ScreenContext, String> {
-    let mon = primary()?;
+pub fn capture_context(display: Option<usize>) -> Result<ScreenContext, String> {
+    let mon = pick(display)?;
     let img = mon.capture_image().map_err(|e| e.to_string())?;
     let (width, height) = (img.width(), img.height());
     let data_url = to_png_data_url(&img)?;
@@ -80,7 +72,7 @@ fn ocr_rgba(img: RgbaImage) -> Option<String> {
     use windows::Graphics::Imaging::{BitmapPixelFormat, SoftwareBitmap};
     use windows::Media::Ocr::OcrEngine;
     use windows::Security::Cryptography::CryptographicBuffer;
-    use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
+    use windows::Win32::System::Com::{COINIT_MULTITHREADED, CoInitializeEx};
 
     unsafe {
         let _ = CoInitializeEx(None, COINIT_MULTITHREADED);

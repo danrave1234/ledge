@@ -1,29 +1,39 @@
 import { writable } from "svelte/store";
 import type { Settings } from "../types";
+import { getProvider } from "../providers";
+import { openaiProvider } from "../providers/openai";
 import { uid } from "./persistence";
 
-export const CURRENT_SCHEMA = 3;
+export const CURRENT_SCHEMA = 10;
 
 export const DEFAULT_SETTINGS: Settings = {
   schemaVersion: CURRENT_SCHEMA,
+  lastVersion: "",
+  safetyId: uid(),
   placement: "top",
   handle: "bar",
-  providerId: "openai",
-  model: "gpt-5.6-sol",
+  providerId: openaiProvider.id,
+  model: openaiProvider.defaultModel,
   effort: "",
   personaId: "default",
   theme: "system",
   hoverOpen: true,
   autostart: false,
   hotkey: "CommandOrControl+Shift+Space",
-  webSearch: false,
-  screenContext: false,
-  gameMode: false,
+  musicConfirmed: false,
+  // On by default: the widget's whole point is being reachable without leaving
+  // what you're doing, and games are exactly when alt-tabbing hurts most.
+  gameMode: true,
   clearCacheOnLaunch: true,
-  plugins: { "web-search": true, "screen-context": true, "job-analyzer": true },
-  installedPlugins: ["job-analyzer"],
+  // Empty by default on both counts: core plugins are implicitly installed
+  // (see plugins.ts `isCorePlugin`) and every plugin is enabled unless it has an
+  // explicit `false` here, so listing defaults would just be a second source of
+  // truth that can drift.
+  plugins: {},
+  installedPlugins: [],
   customModels: [],
-  customCss: "",
+  modelByProvider: {},
+  fetchedModels: [],
   accent: "",
   onboarded: false,
   about: "",
@@ -35,6 +45,33 @@ export const settings = writable<Settings>({ ...DEFAULT_SETTINGS });
 
 export function updateSettings(patch: Partial<Settings>) {
   settings.update((s) => ({ ...s, ...patch }));
+}
+
+/** Record the user's model choice for a provider and switch to it.
+ *  Every model pick goes through here so the choice is remembered per provider
+ *  — a provider can never be paired with another provider's model ID, and
+ *  switching away and back restores what the user actually chose. */
+export function selectModel(providerId: string, model: string) {
+  settings.update((s) => ({
+    ...s,
+    providerId,
+    model,
+    modelByProvider: { ...s.modelByProvider, [providerId]: model },
+  }));
+}
+
+/** Switch provider, restoring the model the user last used with it (falling
+    back to that provider's default the first time). */
+export function setProvider(id: string) {
+  settings.update((s) => {
+    const model = s.modelByProvider?.[id] || getProvider(id).defaultModel;
+    return {
+      ...s,
+      providerId: id,
+      model,
+      modelByProvider: { ...s.modelByProvider, [id]: model },
+    };
+  });
 }
 
 /* ---------- plugins (install-to-enable) ---------- */
@@ -58,14 +95,26 @@ export function installPlugin(id: string) {
 }
 
 export function uninstallPlugin(id: string) {
-  settings.update((s) => ({
-    ...s,
-    installedPlugins: (s.installedPlugins ?? []).filter((x) => x !== id),
-  }));
+  settings.update((s) => {
+    const plugins = { ...s.plugins };
+    delete plugins[id];
+    return {
+      ...s,
+      plugins,
+      installedPlugins: (s.installedPlugins ?? []).filter((x) => x !== id),
+    };
+  });
 }
 
 /* ---------- models: live-fetched (OpenAI) + user custom ---------- */
-export const fetchedModels = writable<string[]>([]);
+
+/** Cache the live model list in settings, so it survives a restart. It used to
+    be an in-memory store: after a relaunch the picker silently fell back to the
+    static list, and a model fetched from the API was no longer listed. */
+export function setFetchedModels(ids: string[]) {
+  updateSettings({ fetchedModels: ids });
+}
+
 export function addCustomModel(id: string) {
   const t = id.trim();
   if (!t) return;
