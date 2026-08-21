@@ -111,6 +111,32 @@ describe("migrateSettings", () => {
     expect(off.gameMode).toBe(false);
   });
 
+  it("adds the default hover-open delay when upgrading", () => {
+    const s = migrateSettings({ ...legacyStore, schemaVersion: 10 });
+    expect(s.hoverOpenDelay).toBe(0.5);
+  });
+
+  it.each([-1, 3.1, Number.NaN, "slow"])(
+    "repairs an invalid hover-open delay of %s",
+    (hoverOpenDelay) => {
+      const s = migrateSettings({
+        ...legacyStore,
+        schemaVersion: CURRENT_SCHEMA,
+        hoverOpenDelay,
+      });
+      expect(s.hoverOpenDelay).toBe(DEFAULT_SETTINGS.hoverOpenDelay);
+    },
+  );
+
+  it("preserves a valid configured hover-open delay", () => {
+    const s = migrateSettings({
+      ...legacyStore,
+      schemaVersion: CURRENT_SCHEMA,
+      hoverOpenDelay: 1.2,
+    });
+    expect(s.hoverOpenDelay).toBe(1.2);
+  });
+
   it("keeps user data intact on an already-current store", () => {
     const current = migrateSettings(legacyStore);
     const again = migrateSettings(current);

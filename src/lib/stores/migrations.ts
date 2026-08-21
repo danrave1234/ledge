@@ -131,6 +131,13 @@ const MIGRATIONS: Migration[] = [
       }
     },
   },
+  {
+    to: 11,
+    describe: "configurable hover-open delay added",
+    apply(s) {
+      s.hoverOpenDelay = DEFAULT_SETTINGS.hoverOpenDelay;
+    },
+  },
 ];
 
 /** Shape guards applied after every migration: a field the UI renders as an
@@ -169,6 +176,14 @@ function coerce(s: Draft): void {
   }
   if (typeof s.safetyId !== "string" || !s.safetyId) {
     s.safetyId = DEFAULT_SETTINGS.safetyId;
+  }
+  if (
+    typeof s.hoverOpenDelay !== "number" ||
+    !Number.isFinite(s.hoverOpenDelay) ||
+    s.hoverOpenDelay < 0 ||
+    s.hoverOpenDelay > 3
+  ) {
+    s.hoverOpenDelay = DEFAULT_SETTINGS.hoverOpenDelay;
   }
 }
 

@@ -45,6 +45,7 @@
   const tauri = isTauri();
   const preview = !tauri;
   let collapseTimer: ReturnType<typeof setTimeout> | null = null;
+  let hoverOpenTimer: ReturnType<typeof setTimeout> | null = null;
   let expandedAt = 0;
   let root: HTMLDivElement;
   let pointerInside = false;
@@ -61,6 +62,13 @@
     }
   }
 
+  function cancelHoverOpen() {
+    if (hoverOpenTimer) {
+      clearTimeout(hoverOpenTimer);
+      hoverOpenTimer = null;
+    }
+  }
+
   /** Pointer entered the window. While expanded this just cancels a pending
       collapse — it must NOT open the panel: the collapsed window is a strip
       wider than the visible handle, so opening from here meant merely passing
@@ -74,13 +82,19 @@
   function onHandleHover() {
     cancelCollapse();
     if (!$ui.expanded && $settings.hoverOpen) {
-      expandedAt = Date.now();
-      expand();
+      cancelHoverOpen();
+      hoverOpenTimer = setTimeout(() => {
+        hoverOpenTimer = null;
+        if ($ui.expanded || !$settings.hoverOpen) return;
+        expandedAt = Date.now();
+        expand();
+      }, $settings.hoverOpenDelay * 1000);
     }
   }
 
   function onLeave() {
     pointerInside = false;
+    cancelHoverOpen();
     // Moving the mouse away must not close the panel while the user is typing
     // or otherwise has a control selected. A real click outside is handled by
     // the native window-blur listener below.
@@ -207,6 +221,8 @@
       }
     })();
     return () => {
+      cancelCollapse();
+      cancelHoverOpen();
       cleanup();
       unblur();
       ungame();
@@ -252,7 +268,7 @@
       <Panel />
     </div>
   {:else}
-    <Handle onhover={onHandleHover} />
+    <Handle onhover={onHandleHover} onhoverend={cancelHoverOpen} />
   {/if}
 </div>
 

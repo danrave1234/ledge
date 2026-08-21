@@ -4,6 +4,7 @@ import {
   allPluginTools,
   allPluginCards,
   pluginContexts,
+  pluginSettingsPanels,
 } from "./registry";
 import { BUILTIN_PLUGINS } from "../plugins";
 import { DEFAULT_SETTINGS } from "../stores/settings";
@@ -52,6 +53,34 @@ describe("plugin registry", () => {
     // Without one the model is never told the ability exists, so it hedges or
     // refuses instead of calling the tool.
     for (const t of allPluginTools()) expect(t.capability?.trim()).toBeTruthy();
+  });
+
+  it("registers Screen Context settings for installed plugins", () => {
+    expect(
+      pluginSettingsPanels((id) => id === "screen-context").map((p) => p.id),
+    ).toEqual(["screen-context"]);
+  });
+
+  it("does not expose stale OCR after screen redaction", async () => {
+    const tool = allPluginTools().find(
+      (candidate) => candidate.spec.name === "read_screen",
+    );
+    const outcome = await tool!.run(
+      {},
+      {
+        settings: settingsWith(),
+        consent: { ...none, screen: true },
+        approvedScreen: {
+          image: "data:image/png;base64,redacted",
+          text: "secret OCR text",
+          redacted: true,
+        },
+        sources: [],
+      },
+    );
+
+    expect(outcome.image).toBe("data:image/png;base64,redacted");
+    expect(outcome.content).not.toContain("secret OCR text");
   });
 });
 

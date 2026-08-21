@@ -263,15 +263,10 @@ export interface ScreenContext {
   width: number;
   height: number;
   text: string;
+  redacted: boolean;
 }
 
 export type CaptureMode = "display" | "active-window";
-export interface CropRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
 
 export interface ComputerTarget {
   id: string;
@@ -322,15 +317,10 @@ export async function computerRunActions(
 export async function captureContext(
   mode: CaptureMode,
   display?: number,
+  autoRedact = false,
 ): Promise<ScreenContext | null> {
   if (!isTauri()) return null;
-  return await cmd<ScreenContext>("capture_context", { mode, display });
-}
-
-/** Crop the reviewed PNG in physical pixels and OCR exactly that result. */
-export async function cropContext(image: string, rect: CropRect): Promise<ScreenContext> {
-  if (!isTauri()) throw new Error("Region capture requires the Windows desktop app.");
-  return await cmd<ScreenContext>("crop_context", { image, rect });
+  return await cmd<ScreenContext>("capture_context", { mode, display, autoRedact });
 }
 
 export async function setGameMode(enabled: boolean): Promise<void> {

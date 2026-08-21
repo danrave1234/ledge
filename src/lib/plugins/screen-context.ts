@@ -1,6 +1,7 @@
 import type { PerchTool } from "../tools";
 import type { PluginModule } from "./types";
 import { pluginActive } from "../plugins";
+import ScreenContextSettings from "./screen-context/ScreenContextSettings.svelte";
 
 const MAX_SCREEN_TEXT = 6000;
 
@@ -44,4 +45,5 @@ const readScreenTool: PerchTool = {
 export const screenContextPlugin: PluginModule = {
   id: "screen-context",
   tools: [readScreenTool],
+  settingsPanel: ScreenContextSettings,
 };

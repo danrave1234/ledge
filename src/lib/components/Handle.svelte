@@ -3,7 +3,8 @@
   import { settings } from "$lib/stores";
   import { openPinned } from "$lib/controller";
 
-  let { onhover }: { onhover?: () => void } = $props();
+  let { onhover, onhoverend }: { onhover?: () => void; onhoverend?: () => void } =
+    $props();
 
   let s = $derived($settings);
   let vertical = $derived(s.placement !== "top");
@@ -23,6 +24,7 @@
     class:vertical
     data-mark={s.handle}
     onmouseenter={() => onhover?.()}
+    onmouseleave={() => onhoverend?.()}
     onclick={() => openPinned()}
     aria-label="Open Perch"
   >
