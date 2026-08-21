@@ -6,11 +6,13 @@
   import { send, stop } from "$lib/controller";
   import { EFFORTS, EFFORT_LABELS } from "$lib/types";
   import type { ApprovedScreen, Attachment, TurnConsent } from "$lib/types";
-  import { captureScreenshot, cropScreenshot } from "$lib/capture";
-  import { extractDocument, type CropRect } from "$lib/native";
+  import { captureScreenshot } from "$lib/capture";
+  import { extractDocument } from "$lib/native";
   import { canSend, isSupportedAttachment } from "$lib/attachments";
+  import { screenContextState } from "$lib/plugins/screen-context/state";
 
   const MAX_TEXTAREA_H = 132;
+  const screenContextPreferences = screenContextState.store;
 
   let text = $state("");
   let ta: HTMLTextAreaElement | undefined = $state();
@@ -24,6 +26,8 @@
   let captureError = $state("");
   let s = $derived($settings);
   let generating = $derived($ui.generating);
+  let reviewScreen = $derived($screenContextPreferences.reviewBeforeSend);
+  let autoRedactScreen = $derived($screenContextPreferences.autoRedact);
 
   // The music toggle is the one control that lets the assistant act outside its
   // own window, so the first time it is switched on it asks. Afterwards the
@@ -63,9 +67,6 @@
     const approved = screen;
     const consent: TurnConsent = { web, screen: !!approved, music };
     attached = null;
-    screen = null;
-    web = false;
-    music = false;
     queueMicrotask(autosize);
     await send(t, {
       attachment: selected ?? undefined,
@@ -88,26 +89,15 @@
     captureError = "";
     attached = null;
     try {
-      const cap = await captureScreenshot(undefined, "active-window");
+      const cap = await captureScreenshot(undefined, "active-window", autoRedactScreen);
       screen = cap.image
-        ? { image: cap.image, text: cap.text, width: cap.width, height: cap.height }
+        ? { image: cap.image, text: cap.text, redacted: cap.redacted }
         : null;
       captureError =
         cap.error ?? (cap.image ? "" : "Screen capture requires the desktop app.");
     } finally {
       capturingScreen = false;
     }
-  }
-
-  async function selectRegion(rect: CropRect) {
-    if (!screen || capturingScreen) return;
-    capturingScreen = true;
-    captureError = "";
-    const cap = await cropScreenshot(screen.image, rect);
-    if (cap.image)
-      screen = { image: cap.image, text: cap.text, width: cap.width, height: cap.height };
-    captureError = cap.error ?? "";
-    capturingScreen = false;
   }
 
   function onKey(e: KeyboardEvent) {
@@ -159,18 +149,15 @@
 </script>
 
 <div class="composer">
-  {#if screen}
+  {#if screen && reviewScreen}
     <ScreenPreview
       image={screen.image}
-      width={screen.width}
-      height={screen.height}
       onredact={(image) => (screen = { image, redacted: true })}
-      onselect={selectRegion}
       onremove={() => (screen = null)}
       onrecapture={recaptureScreen}
     />
   {:else if capturingScreen}
-    <div class="capture-status" aria-live="polite">Capturing screen for review…</div>
+    <div class="capture-status" aria-live="polite">Capturing screen…</div>
   {/if}
   {#if captureError}<div class="attachment-error" role="alert">{captureError}</div>{/if}
   {#if attached}

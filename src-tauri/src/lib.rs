@@ -62,7 +62,6 @@ pub fn run() {
             spotify::spotify_disconnect,
             spotify::spotify_request,
             screen::capture_context,
-            screen::crop_context,
             computer_control::computer_target,
             computer_control::computer_insert_text,
             computer_control::computer_navigate_browser,

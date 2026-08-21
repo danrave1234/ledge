@@ -4,7 +4,7 @@ import { getProvider } from "../providers";
 import { openaiProvider } from "../providers/openai";
 import { uid } from "./persistence";
 
-export const CURRENT_SCHEMA = 10;
+export const CURRENT_SCHEMA = 11;
 
 export const DEFAULT_SETTINGS: Settings = {
   schemaVersion: CURRENT_SCHEMA,
@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: Settings = {
   personaId: "default",
   theme: "system",
   hoverOpen: true,
+  hoverOpenDelay: 0.5,
   autostart: false,
   hotkey: "CommandOrControl+Shift+Space",
   musicConfirmed: false,

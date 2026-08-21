@@ -107,8 +107,6 @@ export interface TurnConsent {
 export interface ApprovedScreen {
   image: string;
   text?: string;
-  width?: number;
-  height?: number;
   /** Redaction invalidates OCR because it may contain text hidden in the image. */
   redacted?: boolean;
 }
@@ -135,6 +133,8 @@ export interface Settings {
   personaId: string;
   theme: ThemeMode;
   hoverOpen: boolean;
+  /** Seconds the pointer must remain over the handle before hover-open. */
+  hoverOpenDelay: number;
   autostart: boolean;
   hotkey: string;
   /** True once the user has agreed to let Perch control playback. */

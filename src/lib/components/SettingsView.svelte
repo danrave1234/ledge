@@ -376,6 +376,27 @@
               aria-label="Toggle hover open"><i></i></button
             >
           </div>
+          {#if s.hoverOpen}
+            <label class="lbl" for="hover-delay">
+              Hover delay: {s.hoverOpenDelay.toFixed(1)} seconds
+            </label>
+            <input
+              id="hover-delay"
+              class="field"
+              type="range"
+              min="0"
+              max="3"
+              step="0.1"
+              value={s.hoverOpenDelay}
+              oninput={(e) =>
+                updateSettings({
+                  hoverOpenDelay: Number((e.target as HTMLInputElement).value),
+                })}
+            />
+            <p class="note">
+              Keep the pointer on the handle for this long to open Perch.
+            </p>
+          {/if}
           <div class="row">
             <div>
               <span class="rl">Run on startup</span>
