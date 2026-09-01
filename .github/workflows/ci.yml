@@ -77,7 +77,7 @@ jobs:
           ./scripts/measure-performance.ps1 -AppPath $app -InstallerPath $installer.FullName -BaselinePath scripts/performance-baseline.json -OutputPath artifacts/performance.json -LogPath artifacts/performance.log
       - name: Upload performance diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: packaged-performance-${{ github.run_attempt }}
           path: |
