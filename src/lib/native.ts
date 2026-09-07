@@ -311,6 +311,25 @@ export async function computerRunActions(
   await cmd("computer_run_actions", { target, actions });
 }
 
+export interface LaunchableApp {
+  name: string;
+  /** A Start Menu shortcut path or, for `system`, a fixed executable/URI. */
+  path: string;
+  kind: "shortcut" | "system";
+}
+
+/** Installed apps Perch may offer to open: Start Menu shortcuts plus a fixed
+ *  set of built-in Windows apps. Empty in the browser preview. */
+export async function listApps(): Promise<LaunchableApp[]> {
+  return tryCmd<LaunchableApp[]>("app_list", []);
+}
+
+/** Open one explicitly approved app. Rust re-checks it against a fresh index. */
+export async function launchApp(app: LaunchableApp): Promise<void> {
+  if (!isTauri()) throw new Error("Opening apps requires the Windows desktop app.");
+  await cmd("app_launch", { app });
+}
+
 /** Capture + OCR a screen so text-only providers can use it too.
  *  `display` is the same monitor index the widget docks to, so what Perch
  *  captures is always the screen the user sees it on. */

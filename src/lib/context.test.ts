@@ -66,6 +66,7 @@ describe("planContext", () => {
 
   it("uses a sane default budget", () => {
     expect(DEFAULT_BUDGET).toBeGreaterThan(2000);
+    expect(DEFAULT_BUDGET).toBeLessThanOrEqual(6000);
     expect(planContext(convo(20, 50)).compact).toHaveLength(0);
   });
 

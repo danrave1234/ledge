@@ -3,6 +3,27 @@
 All notable changes are documented here. Perch follows Semantic Versioning once
 it reaches its first stable release.
 
+## 0.1.2 - 2026-09-08
+
+- Added the built-in App launcher plugin. Ask Perch to open an installed app
+  ("open Spotify") and it matches the request against Start Menu shortcuts plus a
+  fixed set of Windows apps, shows the exact entry on an approval card (with
+  alternatives when the name is ambiguous), and opens it only after you press
+  Open. Rust re-checks the approved entry against a fresh index, so the model can
+  never name an arbitrary path. Works with text-only providers for a bare
+  "open <app>" request.
+- Fixed computer-control approval cards using an undefined `--muted` color and
+  hand-rolled buttons; they now use the shared button primitives and design
+  tokens, and the plugin's Settings description covers everything it does.
+- Added a minimize/expand control to the persistent music bar.
+- Made the Screen toggle capture only when a prompt is sent, use the latest view,
+  and allow screen-only prompts without typed text.
+- Improved web search with live DuckDuckGo results and limited prompt context to
+  the three most relevant sources.
+- Made pinning fully manual and independent from opening, focus, and generation;
+  an unpinned widget clicked outside during generation collapses when output ends.
+- Made Codex CLI responses fill progressively instead of appearing all at once.
+
 ## 0.1.1 - 2026-08-21
 
 - Added the optional Computer control plugin for approval-gated text insertion

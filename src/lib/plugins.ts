@@ -40,8 +40,15 @@ export const BUILTIN_PLUGINS: PerchPlugin[] = [
     id: "computer-control",
     name: "Computer control",
     description:
-      "Let Perch prepare text for the field you were using, then insert it only after you approve the exact target and text.",
+      "Let Perch prepare text, browser navigation, or a short plan of clicks and keys for the window you were using — nothing runs until you approve the exact target and steps.",
     icon: "screen",
+  },
+  {
+    id: "app-launcher",
+    name: "App launcher",
+    description:
+      "Ask Perch to open an installed app (“open Spotify”). It finds the Start Menu entry and opens it only after you approve the exact app.",
+    icon: "stack",
   },
 ];
 
@@ -55,7 +62,7 @@ export function pluginEnabled(
 
 // Core plugins ship with the app and are installed by default (still toggleable,
 // but not removable). Everything else uses the install-to-enable model.
-const CORE_PLUGINS = ["web-search", "screen-context", "computer-control"];
+const CORE_PLUGINS = ["web-search", "screen-context", "computer-control", "app-launcher"];
 export function isCorePlugin(id: string): boolean {
   return CORE_PLUGINS.includes(id);
 }

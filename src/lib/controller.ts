@@ -24,11 +24,26 @@ import { runTurn } from "./agent";
 import { pluginActive } from "./plugins";
 import { buildSystemPrompt } from "./prompt";
 import { prepareComputerControlFallback } from "./plugins/computer-control/fallback";
+import { prepareAppLaunchFallback } from "./plugins/app-launcher/fallback";
 import type { ApprovedScreen, Attachment, Msg, Settings, TurnConsent } from "./types";
 import { persistAttachment, persistImage } from "./assets";
 import { messageContent } from "./attachments";
+import { ProgressiveStream } from "./progressive-stream";
 
 let abort: AbortController | null = null;
+
+/** Reply text shown above an approval card produced by the text-only fallback,
+ *  where no model wrote a sentence to introduce it. */
+function fallbackCardPrompt(cardType: string): string {
+  switch (cardType) {
+    case "computer_navigate_browser":
+      return "Review the browser navigation below, then press Open or Cancel.";
+    case "app_launch":
+      return "Review the app below, then press Open or Cancel.";
+    default:
+      return "Review the action below, then approve or cancel it.";
+  }
+}
 
 /** Single place that talks to the native docker, so placement AND the chosen
     display are always applied together (multi-monitor correctness). */
@@ -57,11 +72,11 @@ export async function expand() {
   await resizeTo(true);
 }
 
-/** Open pinned, resuming wherever the user was. Pass a view to force one.
+/** Open the panel, resuming wherever the user was. Pass a view to force one.
  *  It used to default to "chat", so collapsing while reading Settings and
  *  re-opening dumped you back at the chat. */
 export async function openPinned(view?: View) {
-  await resizeTo(true, view ? { pinned: true, view } : { pinned: true });
+  await resizeTo(true, view ? { view } : {});
 }
 
 export async function collapse(force = false) {
@@ -212,6 +227,11 @@ export async function send(text: string, options: SendOptions = {}) {
   const mine = new AbortController();
   abort = mine;
   const persona = getPersona(s.personaId);
+  const display = new ProgressiveStream((d) =>
+    messages.update((m) =>
+      m.map((x) => (x.id === asst.id ? { ...x, content: x.content + d } : x)),
+    ),
+  );
 
   // EVERYTHING from here down runs inside the try below. `generating` is already
   // true, and anything that throws before the `finally` leaves it stuck on — the
@@ -220,12 +240,14 @@ export async function send(text: string, options: SendOptions = {}) {
   // outside it.
   try {
     // Codex CLI is a black-box text stream and cannot return structured tool
-    // calls. Handle the one action we can identify without model inference so
-    // enabling Computer control still works for an explicit browser + URL
-    // request, while preserving the exact same approval card and native checks.
+    // calls. Handle the few actions we can identify without model inference —
+    // an explicit browser + URL request, or a bare "open <app>" — so enabling
+    // those plugins still works, while preserving the exact same approval
+    // cards and native checks the tool path uses.
     const fallbackOutcome = provider.supportsTools
       ? null
-      : await prepareComputerControlFallback(t, s, consent, options.approvedScreen);
+      : ((await prepareComputerControlFallback(t, s, consent, options.approvedScreen)) ??
+        (await prepareAppLaunchFallback(t, s)));
     if (fallbackOutcome) {
       messages.update((m) =>
         m.map((x) =>
@@ -233,7 +255,7 @@ export async function send(text: string, options: SendOptions = {}) {
             ? {
                 ...x,
                 content: fallbackOutcome.card
-                  ? "Review the browser navigation below, then press Open or Cancel."
+                  ? fallbackCardPrompt(fallbackOutcome.card.type)
                   : fallbackOutcome.content,
                 cards: fallbackOutcome.card ? [fallbackOutcome.card] : undefined,
               }
@@ -323,10 +345,7 @@ export async function send(text: string, options: SendOptions = {}) {
         image,
       },
       {
-        onDelta: (d) =>
-          messages.update((m) =>
-            m.map((x) => (x.id === asst.id ? { ...x, content: x.content + d } : x)),
-          ),
+        onDelta: (d) => display.append(d),
         // Say what's happening between rounds, or a turn that searches twice
         // just sits there looking frozen.
         onToolStart: (name) => ui.update((u) => ({ ...u, activity: toolLabel(name) })),
@@ -351,12 +370,15 @@ export async function send(text: string, options: SendOptions = {}) {
         },
       },
     );
+    if (mine.signal.aborted) display.cancel();
+    else await display.finish();
     const lastImage = turnResult.images.at(-1);
     if (lastImage) {
       const stored = await persistImage(lastImage);
       messages.update((m) => m.map((x) => (x.id === asst.id ? { ...x, ...stored } : x)));
     }
   } catch (e) {
+    display.cancel();
     if (!mine.signal.aborted) {
       const msg = e instanceof Error ? e.message : "Something went wrong";
       const isAuth = /api key|codex cli|sign in|not connected|not found|connect/i.test(

@@ -47,3 +47,11 @@ export {
 } from "./conversations";
 export { customPersonas, getPersona, upsertPersona, deletePersona } from "./personas";
 export { hydrate, hydrationReady } from "./hydrate";
+export {
+  nowPlaying,
+  refreshNowPlaying,
+  syncMusicWatch,
+  control,
+  primarySession,
+  isLive,
+} from "./music";

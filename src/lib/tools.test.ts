@@ -31,6 +31,8 @@ describe("availability gating", () => {
       "prepare_text_insertion",
       "prepare_browser_navigation",
       "prepare_computer_actions",
+      "open_app",
+      "list_installed_apps",
     ]);
   });
 
@@ -40,12 +42,16 @@ describe("availability gating", () => {
       "prepare_text_insertion",
       "prepare_browser_navigation",
       "prepare_computer_actions",
+      "open_app",
+      "list_installed_apps",
     ]);
     expect(toolSpecs(on(), { ...all, web: false }).map((t) => t.name)).toEqual([
       "read_screen",
       "prepare_text_insertion",
       "prepare_browser_navigation",
       "prepare_computer_actions",
+      "open_app",
+      "list_installed_apps",
     ]);
   });
 
@@ -58,6 +64,8 @@ describe("availability gating", () => {
       "prepare_text_insertion",
       "prepare_browser_navigation",
       "prepare_computer_actions",
+      "open_app",
+      "list_installed_apps",
     ]);
   });
 
@@ -67,6 +75,8 @@ describe("availability gating", () => {
         .map((t) => t.pluginId)
         .sort(),
     ).toEqual([
+      "app-launcher",
+      "app-launcher",
       "computer-control",
       "computer-control",
       "computer-control",
