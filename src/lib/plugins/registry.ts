@@ -6,6 +6,7 @@ import { webSearchPlugin } from "./web-search";
 import { screenContextPlugin } from "./screen-context";
 import { musicPlugin } from "./music";
 import { computerControlPlugin } from "./computer-control";
+import { appLauncherPlugin } from "./app-launcher";
 
 /* ==========================================================================
    The one place that knows every plugin.
@@ -26,6 +27,7 @@ export const PLUGIN_MODULES: PluginModule[] = [
   screenContextPlugin,
   musicPlugin,
   computerControlPlugin,
+  appLauncherPlugin,
 ];
 
 /** Every tool contributed by any plugin, in registry order.

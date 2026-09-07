@@ -16,6 +16,9 @@
 
   let { msg, streaming = false }: { msg: Msg; streaming?: boolean } = $props();
 
+  let copied = $state(false);
+  let copyReset: ReturnType<typeof setTimeout> | undefined;
+
   // Cards this build can draw. A conversation can outlive the plugin that
   // produced its cards, so an unknown type is skipped rather than rendered blank.
   let cards = $derived(renderableCards(msg.cards));
@@ -116,6 +119,18 @@
 
   function attachedImage(message: Msg): string | undefined {
     return message.attachment?.kind === "image" ? message.attachment.data : message.image;
+  }
+
+  async function copyResponse() {
+    if (!msg.content.trim()) return;
+    try {
+      await navigator.clipboard.writeText(msg.content);
+      copied = true;
+      clearTimeout(copyReset);
+      copyReset = setTimeout(() => (copied = false), 1400);
+    } catch {
+      copied = false;
+    }
   }
 
   function enhanceCode(root: HTMLElement) {
@@ -242,6 +257,20 @@
         {/if}
       {/if}
     </div>
+    {#if !streaming && !msg.error && msg.content.trim()}
+      <div class="response-actions">
+        <button
+          class:copied
+          type="button"
+          onclick={copyResponse}
+          aria-label={copied ? "Response copied" : "Copy response"}
+          title={copied ? "Copied" : "Copy response"}
+        >
+          <Icon name={copied ? "check" : "copy"} size={13} />
+          <span>{copied ? "Copied" : "Copy"}</span>
+        </button>
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -291,6 +320,35 @@
   .bubble.asst.error {
     background: var(--danger-weak);
     color: var(--danger);
+  }
+  .response-actions {
+    display: flex;
+    min-height: 22px;
+    padding-left: 5px;
+  }
+  .response-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: var(--text-3);
+    font: inherit;
+    font-size: var(--fs-xs);
+    cursor: pointer;
+    transition:
+      color var(--dur) var(--ease),
+      background var(--dur) var(--ease);
+  }
+  .response-actions button:hover,
+  .response-actions button:focus-visible {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  .response-actions button.copied {
+    color: var(--success);
   }
   .authbtn {
     display: block;

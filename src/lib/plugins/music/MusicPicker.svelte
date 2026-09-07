@@ -1,6 +1,6 @@
 <script lang="ts">
   import Icon from "$lib/components/Icon.svelte";
-  import { refreshNowPlaying } from "$lib/stores/music";
+  import { refreshNowPlaying } from "$lib/stores";
   import { play } from "$lib/plugins/music/spotify";
   import { openAndConfirm } from "$lib/plugins/music/youtube";
 

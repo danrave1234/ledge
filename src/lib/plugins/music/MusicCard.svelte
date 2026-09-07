@@ -1,6 +1,6 @@
 <script lang="ts">
   import Icon from "$lib/components/Icon.svelte";
-  import { nowPlaying, control, primarySession, isLive } from "$lib/stores/music";
+  import { nowPlaying, control, primarySession, isLive } from "$lib/stores";
   import type { MediaSession } from "$lib/native";
 
   /* A now-playing card: cover art, track, and transport buttons.

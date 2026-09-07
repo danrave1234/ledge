@@ -229,7 +229,7 @@ fn is_payment_card(value: &str) -> bool {
             }
         })
         .sum();
-    sum % 10 == 0
+    sum.is_multiple_of(10)
 }
 
 fn is_phone(value: &str) -> bool {

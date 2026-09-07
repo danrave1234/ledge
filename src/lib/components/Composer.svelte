@@ -20,6 +20,7 @@
   let attached = $state<Attachment | null>(null);
   let attachmentError = $state("");
   let web = $state(false);
+  let screenEnabled = $state(false);
   let screen = $state<ApprovedScreen | null>(null);
   let music = $state(false);
   let capturingScreen = $state(false);
@@ -61,10 +62,11 @@
 
   async function submit() {
     const t = text;
-    if (!canSend(t, attached)) return;
+    if (!canSend(t, attached) && !screenEnabled) return;
+    const approved = screenEnabled ? await captureCurrentScreen() : null;
+    if (screenEnabled && !approved) return;
     text = "";
     const selected = attached;
-    const approved = screen;
     const consent: TurnConsent = { web, screen: !!approved, music };
     attached = null;
     queueMicrotask(autosize);
@@ -76,18 +78,24 @@
   }
 
   async function toggleScreen() {
-    if (screen) {
+    screenEnabled = !screenEnabled;
+    captureError = "";
+    if (!screenEnabled) {
       screen = null;
-      return;
     }
-    await recaptureScreen();
   }
 
   async function recaptureScreen() {
-    if (capturingScreen) return;
+    await captureCurrentScreen(true);
+  }
+
+  async function captureCurrentScreen(
+    clearAttachment = false,
+  ): Promise<ApprovedScreen | null> {
+    if (capturingScreen) return screen;
     capturingScreen = true;
     captureError = "";
-    attached = null;
+    if (clearAttachment) attached = null;
     try {
       const cap = await captureScreenshot(undefined, "active-window", autoRedactScreen);
       screen = cap.image
@@ -95,6 +103,7 @@
         : null;
       captureError =
         cap.error ?? (cap.image ? "" : "Screen capture requires the desktop app.");
+      return screen;
     } finally {
       capturingScreen = false;
     }
@@ -197,7 +206,7 @@
       <button
         class="send"
         onclick={submit}
-        disabled={!canSend(text, attached)}
+        disabled={!canSend(text, attached) && !screenEnabled}
         aria-label="Send"
       >
         <Icon name="send" size={16} />
@@ -227,8 +236,8 @@
     {#if pluginActive(s, "screen-context")}
       <button
         class="chip"
-        class:on={!!screen}
-        aria-pressed={!!screen}
+        class:on={screenEnabled}
+        aria-pressed={screenEnabled}
         disabled={capturingScreen}
         onclick={toggleScreen}
       >

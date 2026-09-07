@@ -10,7 +10,7 @@ const HTML_ENDPOINT: &str = "https://html.duckduckgo.com/html/";
 const IA_ENDPOINT: &str = "https://api.duckduckgo.com/";
 /// Results folded into the prompt. More than this is prompt bloat the user pays
 /// for on every turn.
-const MAX_RESULTS: usize = 6;
+const MAX_RESULTS: usize = 3;
 /// Snippets are truncated so one verbose result can't crowd out the others.
 const MAX_SNIPPET: usize = 400;
 

@@ -1,9 +1,66 @@
 use crate::provider::{ChatEvent, RequestGuard};
-use std::io::{BufRead, BufReader};
+use serde_json::{Value, json};
+use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
 use tauri::ipc::Channel;
+
+fn write_request(stdin: &mut impl Write, value: Value) -> Result<(), String> {
+    serde_json::to_writer(&mut *stdin, &value).map_err(|e| e.to_string())?;
+    stdin.write_all(b"\n").map_err(|e| e.to_string())?;
+    stdin.flush().map_err(|e| e.to_string())
+}
+
+fn response_result(message: &Value, id: u64) -> Option<&Value> {
+    (message.get("id").and_then(Value::as_u64) == Some(id)).then(|| message.get("result"))?
+}
+
+fn agent_delta(message: &Value) -> Option<&str> {
+    (message.get("method")?.as_str()? == "item/agentMessage/delta")
+        .then(|| message.pointer("/params/delta")?.as_str())?
+}
+
+#[cfg(windows)]
+fn terminate(child: &mut std::process::Child) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+    let mut command = Command::new("taskkill");
+    command
+        .args(["/PID", &child.id().to_string(), "/T", "/F"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .creation_flags(CREATE_NO_WINDOW);
+    let _ = command.status();
+}
+
+#[cfg(not(windows))]
+fn terminate(child: &mut std::process::Child) {
+    let _ = child.kill();
+}
+
+fn turn_finished(message: &Value, turn_id: &str) -> Option<Result<(), String>> {
+    let method = message.get("method")?.as_str()?;
+    if !matches!(method, "turn/completed" | "turn/failed")
+        || message.pointer("/params/turn/id")?.as_str()? != turn_id
+    {
+        return None;
+    }
+    if method == "turn/completed"
+        && message
+            .pointer("/params/turn/status")
+            .and_then(Value::as_str)
+            != Some("failed")
+    {
+        return Some(Ok(()));
+    }
+    let error = message
+        .pointer("/params/turn/error/message")
+        .and_then(Value::as_str)
+        .unwrap_or("Codex could not complete this response.");
+    Some(Err(error.to_string()))
+}
 
 /// Working root for `codex exec`. Perch inherits whatever directory it was
 /// launched from — Program Files, or a game's folder via autostart — which is
@@ -147,7 +204,7 @@ pub fn codex_logout() -> Result<(), String> {
     Ok(())
 }
 
-/// Run a single non-interactive Codex task and stream its stdout back as deltas.
+/// Run a single non-interactive Codex task over app-server's live event stream.
 /// Uses the user's own `codex login` (Sign in with ChatGPT), so this rides their
 /// Codex subscription through OpenAI's official tool rather than reusing tokens.
 #[tauri::command]
@@ -162,49 +219,15 @@ pub async fn codex_exec(
     let ev = on_event.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         let use_model = !model.is_empty() && model != "codex-default";
-        let effort_cfg = format!("model_reasoning_effort=\"{}\"", effort);
         let workdir = working_root();
-
-        let mut args: Vec<&str> = vec![
-            "exec",
-            // Codex refuses to run outside a Git repository. Perch's working
-            // directory is wherever the app was launched from, so without this
-            // every message failed with a bare "exited with an error".
-            "--skip-git-repo-check",
-            // Never emit ANSI escapes: this stdout is rendered as markdown.
-            "--color",
-            "never",
-            // A chat widget's turns are not sessions worth persisting.
-            "--ephemeral",
-            "--cd",
-            workdir.as_str(),
-        ];
-        if use_model {
-            args.push("--model");
-            args.push(model.as_str());
-        }
-        if !effort.is_empty() {
-            args.push("-c");
-            args.push(effort_cfg.as_str());
-        }
-        // "-" makes Codex read the prompt from stdin. Passing it as an argument
-        // instead put the whole system prompt on a cmd.exe command line, which
-        // is capped at 8191 characters — screen-context OCR text alone can blow
-        // past that, and the invocation fails before the model ever sees it.
-        args.push("-");
-
-        let mut child = codex_command(&args)
+        let mut child = codex_command(&["app-server", "--stdio"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| e.to_string())?;
-
-        if let Some(mut stdin) = child.stdin.take() {
-            use std::io::Write;
-            let _ = stdin.write_all(prompt.as_bytes());
-            // Dropping closes the pipe, which is how Codex knows the prompt ended.
-        }
+        let mut stdin = child.stdin.take().ok_or("Codex app-server stdin is unavailable")?;
+        let stdout = child.stdout.take().ok_or("Codex app-server stdout is unavailable")?;
 
         // Drain stderr on its own thread: reading it only after stdout would
         // deadlock if the CLI filled the stderr pipe buffer mid-run.
@@ -220,43 +243,79 @@ pub async fn codex_exec(
             buf
         });
 
-        let mut cancelled = false;
-        if let Some(out) = child.stdout.take() {
-            for line in BufReader::new(out).lines().map_while(Result::ok) {
-                // Stop must end a Codex generation too, not just an OpenAI one:
-                // kill the CLI so it stops working (and spending) in the
-                // background instead of running to completion unseen.
-                if request.cancelled() {
-                    cancelled = true;
-                    let _ = child.kill();
-                    break;
-                }
-                let _ = ev.send(ChatEvent::Delta {
-                    delta: format!("{line}\n"),
+        write_request(
+            &mut stdin,
+            json!({"id": 1, "method": "initialize", "params": {
+                "clientInfo": {"name": "perch", "title": "Perch", "version": env!("CARGO_PKG_VERSION")},
+                "capabilities": {}
+            }}),
+        )?;
+
+        let mut turn_id = None;
+        let mut outcome = None;
+        for line in BufReader::new(stdout).lines() {
+            if request.cancelled() {
+                outcome = Some(Ok(()));
+                break;
+            }
+            let line = line.map_err(|e| e.to_string())?;
+            let message: Value = serde_json::from_str(&line).map_err(|e| e.to_string())?;
+            if response_result(&message, 1).is_some() {
+                write_request(&mut stdin, json!({"method": "initialized", "params": {}}))?;
+                let mut params = json!({
+                    "cwd": workdir,
+                    "approvalPolicy": "never",
+                    "sandbox": "read-only",
+                    "ephemeral": true
                 });
+                if use_model {
+                    params["model"] = json!(model);
+                }
+                if !effort.is_empty() {
+                    params["modelReasoningEffort"] = json!(effort);
+                }
+                write_request(&mut stdin, json!({"id": 2, "method": "thread/start", "params": params}))?;
+            } else if let Some(result) = response_result(&message, 2) {
+                let id = result.pointer("/thread/id").and_then(Value::as_str).ok_or("Codex did not return a thread id")?;
+                write_request(
+                    &mut stdin,
+                    json!({"id": 3, "method": "turn/start", "params": {
+                        "threadId": id,
+                        "input": [{"type": "text", "text": prompt}]
+                    }}),
+                )?;
+            } else if let Some(result) = response_result(&message, 3) {
+                turn_id = Some(
+                    result.pointer("/turn/id").and_then(Value::as_str).ok_or("Codex did not return a turn id")?.to_string(),
+                );
+            } else if let Some(delta) = agent_delta(&message) {
+                let _ = ev.send(ChatEvent::Delta { delta: delta.to_string() });
+            }
+            if let Some(id) = turn_id.as_deref()
+                && let Some(finished) = turn_finished(&message, id)
+            {
+                outcome = Some(finished);
+                break;
             }
         }
-        let status = child.wait().map_err(|e| e.to_string())?;
+        drop(stdin);
+        terminate(&mut child);
+        let _ = child.wait();
         let errors = stderr_handle.join().unwrap_or_default();
-        Ok::<(bool, String), String>((cancelled || status.success(), errors))
+        match outcome {
+            Some(Ok(())) => Ok::<(), String>(()),
+            Some(Err(e)) => Err(e),
+            None => {
+                let detail: String = errors.trim().chars().take(400).collect();
+                Err(if detail.is_empty() { "Codex stream ended before completion.".into() } else { detail })
+            }
+        }
     })
     .await;
 
     match result {
-        Ok(Ok((true, _))) => {
+        Ok(Ok(())) => {
             let _ = on_event.send(ChatEvent::Done);
-        }
-        Ok(Ok((false, errors))) => {
-            // Say WHAT went wrong. Swallowing stderr turned every failure into
-            // the same unactionable "exited with an error".
-            let detail: String = errors.trim().chars().take(400).collect();
-            let _ = on_event.send(ChatEvent::Error {
-                message: if detail.is_empty() {
-                    "Codex CLI exited with an error (no output).".into()
-                } else {
-                    format!("Codex CLI failed: {detail}")
-                },
-            });
         }
         Ok(Err(e)) => {
             let _ = on_event.send(ChatEvent::Error {
@@ -270,4 +329,29 @@ pub async fn codex_exec(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{agent_delta, response_result, turn_finished};
+    use serde_json::json;
+
+    #[test]
+    fn parses_live_delta_and_terminal_events() {
+        assert_eq!(
+            agent_delta(
+                &json!({"method": "item/agentMessage/delta", "params": {"delta": "Hello — 世界"}})
+            ),
+            Some("Hello — 世界")
+        );
+        assert!(response_result(&json!({"id": 2, "result": {"thread": {"id": "t"}}}), 2).is_some());
+        assert_eq!(
+            turn_finished(
+                &json!({"method": "turn/completed", "params": {"turn": {"id": "turn-1", "status": "completed"}}}),
+                "turn-1"
+            ),
+            Some(Ok(()))
+        );
+        assert!(turn_finished(&json!({"method": "turn/completed", "params": {"turn": {"id": "other", "status": "completed"}}}), "turn-1").is_none());
+    }
 }

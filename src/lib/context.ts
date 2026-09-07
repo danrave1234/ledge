@@ -31,8 +31,10 @@ export interface ContextPlan {
   compact: Msg[];
 }
 
-/** Tokens of transcript to send before compaction kicks in. */
-export const DEFAULT_BUDGET = 8000;
+/** Tokens of transcript to send before compaction kicks in. A compact recent
+    window preserves conversational continuity without paying to resend a long
+    transcript on every turn. */
+export const DEFAULT_BUDGET = 6000;
 /** Always keep at least this many recent messages, budget or not — a couple of
     huge messages must never leave the model with no immediate context. */
 const MIN_KEEP = 6;
@@ -69,7 +71,7 @@ export function transcriptOf(messages: Msg[]): string {
 }
 
 /** Instruction used to fold older turns into the running summary. */
-export const SUMMARY_SYSTEM = `You compress a conversation so it can continue without the original transcript. Capture: what the user is working on, decisions and conclusions reached, facts they stated about themselves or their setup, and anything still open or promised. Drop pleasantries and anything already resolved and irrelevant. Write terse notes, not prose, under 200 words. No preamble.`;
+export const SUMMARY_SYSTEM = `Compress a conversation into durable notes. Keep only the user's goal, relevant facts, decisions, constraints, and unresolved work. Drop pleasantries, repetition, transient wording, and resolved details. Use terse fragments under 120 words. No preamble.`;
 
 /** Prompt for a fresh summary, or for merging new turns into an existing one. */
 export function summaryPrompt(previous: string | undefined, older: Msg[]): string {

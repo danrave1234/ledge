@@ -36,14 +36,16 @@
   {:else}
     <div class="actions">
       <button
-        class="insert"
+        class="btn btn-sm btn-accent"
         onclick={insert}
         disabled={status === "inserting" || !data.target || !data.text}
       >
         {status === "inserting" ? "Inserting…" : "Insert"}
       </button>
-      <button onclick={() => (status = "cancelled")} disabled={status === "inserting"}
-        >Cancel</button
+      <button
+        class="btn btn-sm"
+        onclick={() => (status = "cancelled")}
+        disabled={status === "inserting"}>Cancel</button
       >
     </div>
   {/if}
@@ -53,13 +55,13 @@
   .card {
     padding: 12px;
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     background: var(--surface);
   }
   .eyebrow {
     margin-bottom: 4px;
-    color: var(--muted);
-    font-size: 11px;
+    color: var(--text-2);
+    font-size: var(--fs-xs);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
@@ -68,40 +70,23 @@
     overflow: auto;
     margin: 10px 0;
     padding: 9px;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--surface-2);
     white-space: pre-wrap;
     font: inherit;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .actions {
     display: flex;
     gap: 8px;
   }
-  button {
-    padding: 7px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-  }
-  button:disabled {
-    opacity: 0.55;
-    cursor: default;
-  }
-  .insert {
-    border-color: var(--accent);
-    background: var(--accent);
-    color: var(--accent-on);
-  }
   .error {
     margin-bottom: 8px;
     color: var(--danger);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .receipt {
-    color: var(--muted);
-    font-size: 12px;
+    color: var(--text-2);
+    font-size: var(--fs-sm);
   }
 </style>

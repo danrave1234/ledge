@@ -92,6 +92,8 @@ describe("gating through the registry", () => {
       "prepare_text_insertion",
       "prepare_browser_navigation",
       "prepare_computer_actions",
+      "open_app",
+      "list_installed_apps",
     ]);
   });
 
@@ -103,6 +105,8 @@ describe("gating through the registry", () => {
       "prepare_text_insertion",
       "prepare_browser_navigation",
       "prepare_computer_actions",
+      "open_app",
+      "list_installed_apps",
     ]);
     expect(
       availableTools(settingsWith({ plugins: { "web-search": false } }), {
@@ -113,6 +117,8 @@ describe("gating through the registry", () => {
       "prepare_text_insertion",
       "prepare_browser_navigation",
       "prepare_computer_actions",
+      "open_app",
+      "list_installed_apps",
     ]);
   });
 
@@ -123,6 +129,8 @@ describe("gating through the registry", () => {
       "prepare_text_insertion",
       "prepare_browser_navigation",
       "prepare_computer_actions",
+      "open_app",
+      "list_installed_apps",
     ]);
 
     // Full consent adds transport control, and YouTube — which needs no
@@ -149,8 +157,25 @@ describe("plugin context blocks", () => {
     expect(text).toContain("must approve");
   });
 
+  it("instructs the model to route app requests through the approval tool", () => {
+    const text = pluginContexts(settingsWith(), none).join("\n");
+    expect(text).toContain("MUST call `open_app`");
+    expect(text).toContain("never claim the app is open");
+  });
+
+  it("removes app launcher tools and instructions independently of computer control", () => {
+    const disabled = settingsWith({ plugins: { "app-launcher": false } });
+    const names = availableTools(disabled, none).map((t) => t.spec.name);
+    expect(names).not.toContain("open_app");
+    expect(names).not.toContain("list_installed_apps");
+    expect(names).toContain("prepare_text_insertion");
+    expect(pluginContexts(disabled, none).join("\n")).not.toContain("open_app");
+  });
+
   it("removes computer control tools and instructions when disabled", () => {
-    const disabled = settingsWith({ plugins: { "computer-control": false } });
+    const disabled = settingsWith({
+      plugins: { "computer-control": false, "app-launcher": false },
+    });
     expect(availableTools(disabled, none)).toEqual([]);
     expect(pluginContexts(disabled, none).join("\n")).not.toContain(
       "prepare_text_insertion",

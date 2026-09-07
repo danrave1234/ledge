@@ -1,3 +1,4 @@
+mod app_launcher;
 mod codex;
 mod computer_control;
 mod document;
@@ -66,6 +67,8 @@ pub fn run() {
             computer_control::computer_insert_text,
             computer_control::computer_navigate_browser,
             computer_control::computer_run_actions,
+            app_launcher::app_list,
+            app_launcher::app_launch,
             secrets::set_api_key,
             secrets::has_api_key,
             secrets::clear_api_key,

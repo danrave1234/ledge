@@ -49,11 +49,18 @@
   let expandedAt = 0;
   let root: HTMLDivElement;
   let pointerInside = false;
+  let blurredWhileGenerating = false;
 
   let lastPlacement = "";
   let lastDisplay: number | undefined = undefined;
   const nativeSettingsState = createNativeSettingsState();
   let startupGameModeReady = $state(preview);
+
+  $effect(() => {
+    if ($ui.generating || !blurredWhileGenerating) return;
+    blurredWhileGenerating = false;
+    collapse();
+  });
 
   function cancelCollapse() {
     if (collapseTimer) {
@@ -125,7 +132,7 @@
     (async () => {
       if (preview) {
         document.body.classList.add("preview");
-        ui.update((u) => ({ ...u, expanded: true, pinned: true }));
+        ui.update((u) => ({ ...u, expanded: true }));
       }
 
       try {
@@ -159,7 +166,7 @@
 
       // First run: open the panel so the login/onboarding shows.
       if (!preview && !$settings.onboarded) {
-        ui.update((u) => ({ ...u, expanded: true, pinned: true }));
+        ui.update((u) => ({ ...u, expanded: true }));
         await redock();
       }
 
@@ -184,7 +191,7 @@
             }
           } else if (a === "settings") setView("settings");
           else {
-            ui.update((u) => ({ ...u, expanded: true, pinned: true }));
+            ui.update((u) => ({ ...u, expanded: true }));
             redock();
           }
         });
@@ -214,7 +221,13 @@
       // Click outside the widget → minimize, unless pinned or generating.
       if (!preview) {
         try {
-          unblur = await onWindowBlur(() => collapse());
+          unblur = await onWindowBlur(() => {
+            if ($ui.generating) {
+              blurredWhileGenerating = true;
+              return;
+            }
+            collapse();
+          });
         } catch (e) {
           console.error("blur listen failed", e);
         }

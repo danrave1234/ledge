@@ -33,7 +33,7 @@ chat, title generation, and compaction do not cancel one another.
 | Orchestration   | `controller.ts`, `agent.ts`, `context.ts`, `memory.ts`, `prompt.ts`   |
 | Providers       | `providers/` with shared native Channel transport in `native.ts`      |
 | Plugins         | catalog in `plugins.ts`; executable registry in `plugins/registry.ts` |
-| State           | domain stores in `stores/`, re-exported through `stores/index.ts`     |
+| State           | domain stores in `stores/`, exposed to UI through `stores/index.ts`   |
 | Storage assets  | `assets.ts` migrates inline images and strips them from JSON          |
 | Native boundary | `native.ts`, the only `@tauri-apps/*` importer                        |
 | Design system   | `tokens.css`, shared primitives, and `motion.ts`                      |
@@ -41,6 +41,11 @@ chat, title generation, and compaction do not cancel one another.
 Startup is ordered: show the handle, hydrate and migrate stores, reconcile the app
 version, then refresh provider authentication. Persistence subscriptions are attached
 only after hydration, so defaults cannot overwrite existing files.
+
+`stores/index.ts` is the public state API for components, including plugin UI. Domain
+modules may be reorganized or split as they grow without forcing component-wide import
+changes; non-component orchestration can still import a domain module directly when it
+needs an implementation-level dependency.
 
 ## Rust ownership
 
@@ -51,6 +56,7 @@ only after hydration, so defaults cannot overwrite existing files.
 | `codex.rs`            | supported Codex CLI availability/login/status/logout/exec commands |
 | `screen.rs`           | chosen-display capture and Windows OCR                             |
 | `computer_control.rs` | tracked-window validation and approved keyboard/pointer actions    |
+| `app_launcher.rs`     | Start Menu app index and approved, index-validated app launching   |
 | `web.rs`              | bounded DuckDuckGo search and parsing                              |
 | `media.rs`            | Windows media sessions, control, and opt-in watcher                |
 | `spotify.rs`          | PKCE and allowlisted Spotify API proxy                             |
@@ -68,6 +74,7 @@ only after hydration, so defaults cannot overwrite existing files.
 | Codex   | `codex_available`, `codex_login`, `codex_logged_in`, `codex_logout`, `codex_exec`                                                                     |
 | Context | `capture_context`, `web_search`                                                                                                                       |
 | Control | `computer_target`, `computer_insert_text`, `computer_navigate_browser`, `computer_run_actions`                                                        |
+| Apps    | `app_list`, `app_launch`                                                                                                                              |
 | Media   | `media_sessions`, `media_control`, `media_watch`; `perch://now-playing`                                                                               |
 | Spotify | `spotify_connect`, `spotify_connected`, `spotify_disconnect`, `spotify_request`                                                                       |
 | YouTube | `youtube_search`, `youtube_has_key`, `set_youtube_key`                                                                                                |
@@ -102,3 +109,11 @@ contain at most 12 clicks, text steps, allowlisted navigation keys, or bounded s
 click coordinates are normalized to and resolved inside the approved window. Send,
 submit, purchase, delete, authentication, passwords, arbitrary shortcuts, elevated
 windows, UAC, and secure desktop remain outside the boundary.
+
+App launching follows the same shape. The model supplies only a name; the frontend
+matches it against `app_list` (Start Menu `.lnk` shortcuts plus a fixed table of
+built-in Windows apps) and shows the exact entry — with alternatives when the match is
+not certain — on an approval card. `app_launch` rebuilds the index and refuses any
+entry whose name, path, and kind are not present in it, so an edited card payload or
+a path outside the Start Menu cannot be opened. Launching uses the shell `open` verb
+with no arguments; Perch never runs a command line.

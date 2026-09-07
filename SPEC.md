@@ -17,8 +17,10 @@ of fullscreen apps, and makes sensitive capabilities explicit at the composer.
 - Streaming Markdown chat, model selection, history, personas, memory selection,
   conversation compaction, source citations, code/image canvas, themes, autostart,
   global shortcut, tray, signed updates, multi-monitor docking, and game mode.
-- Built-in web search and screen context; install-to-enable music integration for
-  Windows media sessions, Spotify PKCE, and best-effort YouTube Music links.
+- Built-in web search, screen context, approval-gated computer control, and an
+  approval-gated app launcher over Start Menu shortcuts and built-in Windows apps;
+  install-to-enable music integration for Windows media sessions, Spotify PKCE, and
+  best-effort YouTube Music links.
 
 ## Consent and privacy
 
@@ -82,6 +84,9 @@ private memory, and 8.5 MiB installer size; update them only from retained CI me
   not consumer subscription authentication.
 - Screen capture supports the docked display, the last external active window, and a
   selected physical-pixel region reviewed before one-turn consent.
+- The app launcher opens only entries present in a freshly built index of Start Menu
+  shortcuts and a fixed table of Windows apps; it never runs paths or command lines
+  supplied by the model, and Store-only apps without a shortcut are out of scope.
 
 ## Quality bar
 
