@@ -7,6 +7,7 @@ import { screenContextPlugin } from "./screen-context";
 import { musicPlugin } from "./music";
 import { computerControlPlugin } from "./computer-control";
 import { appLauncherPlugin } from "./app-launcher";
+import { folderFinderPlugin } from "./folder-finder";
 
 /* ==========================================================================
    The one place that knows every plugin.
@@ -28,6 +29,7 @@ export const PLUGIN_MODULES: PluginModule[] = [
   musicPlugin,
   computerControlPlugin,
   appLauncherPlugin,
+  folderFinderPlugin,
 ];
 
 /** Every tool contributed by any plugin, in registry order.

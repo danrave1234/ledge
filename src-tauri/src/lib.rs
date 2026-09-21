@@ -2,6 +2,7 @@ mod app_launcher;
 mod codex;
 mod computer_control;
 mod document;
+mod folder_finder;
 mod http;
 mod media;
 mod provider;
@@ -69,6 +70,8 @@ pub fn run() {
             computer_control::computer_run_actions,
             app_launcher::app_list,
             app_launcher::app_launch,
+            folder_finder::search_paths_cmd,
+            folder_finder::open_found_path,
             secrets::set_api_key,
             secrets::has_api_key,
             secrets::clear_api_key,

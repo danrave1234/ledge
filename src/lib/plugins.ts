@@ -50,6 +50,13 @@ export const BUILTIN_PLUGINS: PerchPlugin[] = [
       "Ask Perch to open an installed app (“open Spotify”). It finds the Start Menu entry and opens it only after you approve the exact app.",
     icon: "stack",
   },
+  {
+    id: "folder-finder",
+    name: "Folder finder",
+    description:
+      "Ask Perch to find a folder or file on your PC (“where is my downloads?”). It searches known folders and opens the match only after you approve the path.",
+    icon: "folder",
+  },
 ];
 
 export function pluginEnabled(
@@ -62,7 +69,7 @@ export function pluginEnabled(
 
 // Core plugins ship with the app and are installed by default (still toggleable,
 // but not removable). Everything else uses the install-to-enable model.
-const CORE_PLUGINS = ["web-search", "screen-context", "computer-control", "app-launcher"];
+const CORE_PLUGINS = ["web-search", "screen-context", "computer-control", "app-launcher", "folder-finder"];
 export function isCorePlugin(id: string): boolean {
   return CORE_PLUGINS.includes(id);
 }

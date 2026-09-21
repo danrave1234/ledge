@@ -3,6 +3,17 @@
 All notable changes are documented here. Perch follows Semantic Versioning once
 it reaches its first stable release.
 
+## 0.1.3 - 2026-09-21
+
+- Added the built-in Folder finder plugin. Ask Perch to find a folder or file
+  ("where is my downloads?", "open Project Files folder") and it searches known
+  user folders, shows the path on an approval card (with alternatives when the
+  name is ambiguous), and opens it only after you press Open. Rust re-checks the
+  approved path against allowed roots. `find_path` can return addresses without
+  opening. Works with text-only providers for clear folder/file phrasing.
+- Redesigned the Folder finder approval card with folder/file icons, copy-to-clipboard,
+  monospaced path display, kind badges, and improved success/cancelled states.
+
 ## 0.1.2 - 2026-09-08
 
 - Added the built-in App launcher plugin. Ask Perch to open an installed app
