@@ -94,6 +94,8 @@ describe("gating through the registry", () => {
       "prepare_computer_actions",
       "open_app",
       "list_installed_apps",
+      "find_path",
+      "open_path",
     ]);
   });
 
@@ -107,6 +109,8 @@ describe("gating through the registry", () => {
       "prepare_computer_actions",
       "open_app",
       "list_installed_apps",
+      "find_path",
+      "open_path",
     ]);
     expect(
       availableTools(settingsWith({ plugins: { "web-search": false } }), {
@@ -119,6 +123,8 @@ describe("gating through the registry", () => {
       "prepare_computer_actions",
       "open_app",
       "list_installed_apps",
+      "find_path",
+      "open_path",
     ]);
   });
 
@@ -131,6 +137,8 @@ describe("gating through the registry", () => {
       "prepare_computer_actions",
       "open_app",
       "list_installed_apps",
+      "find_path",
+      "open_path",
     ]);
 
     // Full consent adds transport control, and YouTube — which needs no
@@ -163,18 +171,38 @@ describe("plugin context blocks", () => {
     expect(text).toContain("never claim the app is open");
   });
 
+  it("instructs the model to route folder requests through the approval tool", () => {
+    const text = pluginContexts(settingsWith(), none).join("\n");
+    expect(text).toContain("MUST call `open_path`");
+    expect(text).toContain("never claim the path is open");
+  });
+
   it("removes app launcher tools and instructions independently of computer control", () => {
     const disabled = settingsWith({ plugins: { "app-launcher": false } });
     const names = availableTools(disabled, none).map((t) => t.spec.name);
     expect(names).not.toContain("open_app");
     expect(names).not.toContain("list_installed_apps");
     expect(names).toContain("prepare_text_insertion");
-    expect(pluginContexts(disabled, none).join("\n")).not.toContain("open_app");
+    expect(names).toContain("find_path");
+    expect(pluginContexts(disabled, none).join("\n")).not.toContain("MUST call `open_app`");
+  });
+
+  it("removes folder finder tools and instructions independently", () => {
+    const disabled = settingsWith({ plugins: { "folder-finder": false } });
+    const names = availableTools(disabled, none).map((t) => t.spec.name);
+    expect(names).not.toContain("find_path");
+    expect(names).not.toContain("open_path");
+    expect(names).toContain("open_app");
+    expect(pluginContexts(disabled, none).join("\n")).not.toContain("MUST call `open_path`");
   });
 
   it("removes computer control tools and instructions when disabled", () => {
     const disabled = settingsWith({
-      plugins: { "computer-control": false, "app-launcher": false },
+      plugins: {
+        "computer-control": false,
+        "app-launcher": false,
+        "folder-finder": false,
+      },
     });
     expect(availableTools(disabled, none)).toEqual([]);
     expect(pluginContexts(disabled, none).join("\n")).not.toContain(

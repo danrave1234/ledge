@@ -330,6 +330,25 @@ export async function launchApp(app: LaunchableApp): Promise<void> {
   await cmd("app_launch", { app });
 }
 
+export interface FoundPath {
+  name: string;
+  path: string;
+  kind: "folder" | "file";
+}
+
+/** Search known Windows folders for paths matching a query.
+ *  Returns empty array in the browser preview. */
+export async function searchPaths(query: string): Promise<FoundPath[]> {
+  return tryCmd<FoundPath[]>("search_paths_cmd", [], { query });
+}
+
+/** Open an approved path in Explorer (folder) or default handler (file).
+ *  Rust re-validates the path against allowed roots before opening. */
+export async function openFoundPath(path: string, kind: "folder" | "file"): Promise<void> {
+  if (!isTauri()) throw new Error("Opening paths requires the Windows desktop app.");
+  await cmd("open_found_path", { path, kind });
+}
+
 /** Capture + OCR a screen so text-only providers can use it too.
  *  `display` is the same monitor index the widget docks to, so what Perch
  *  captures is always the screen the user sees it on. */

@@ -1,6 +1,6 @@
 {
   "name": "perch",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Perch — an edge-docked AI assistant widget for Windows",
   "private": true,
   "type": "module",

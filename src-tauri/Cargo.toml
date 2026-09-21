@@ -1,6 +1,6 @@
 [package]
 name = "perch"
-version = "0.1.2"
+version = "0.1.3"
 description = "Perch — an edge-docked AI assistant widget"
 authors = ["Danrave"]
 edition = "2024"

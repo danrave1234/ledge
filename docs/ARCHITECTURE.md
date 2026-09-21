@@ -57,6 +57,7 @@ needs an implementation-level dependency.
 | `screen.rs`           | chosen-display capture and Windows OCR                             |
 | `computer_control.rs` | tracked-window validation and approved keyboard/pointer actions    |
 | `app_launcher.rs`     | Start Menu app index and approved, index-validated app launching   |
+| `folder_finder.rs`    | Bounded known-folder search and approved path opening              |
 | `web.rs`              | bounded DuckDuckGo search and parsing                              |
 | `media.rs`            | Windows media sessions, control, and opt-in watcher                |
 | `spotify.rs`          | PKCE and allowlisted Spotify API proxy                             |
@@ -75,6 +76,7 @@ needs an implementation-level dependency.
 | Context | `capture_context`, `web_search`                                                                                                                       |
 | Control | `computer_target`, `computer_insert_text`, `computer_navigate_browser`, `computer_run_actions`                                                        |
 | Apps    | `app_list`, `app_launch`                                                                                                                              |
+| Paths   | `search_paths_cmd`, `open_found_path`                                                                                                                 |
 | Media   | `media_sessions`, `media_control`, `media_watch`; `perch://now-playing`                                                                               |
 | Spotify | `spotify_connect`, `spotify_connected`, `spotify_disconnect`, `spotify_request`                                                                       |
 | YouTube | `youtube_search`, `youtube_has_key`, `set_youtube_key`                                                                                                |
@@ -117,3 +119,12 @@ not certain — on an approval card. `app_launch` rebuilds the index and refuses
 entry whose name, path, and kind are not present in it, so an edited card payload or
 a path outside the Start Menu cannot be opened. Launching uses the shell `open` verb
 with no arguments; Perch never runs a command line.
+
+Folder finding mirrors that trust model. The model supplies only a name or query;
+`search_paths_cmd` walks bounded roots under the user profile and known Windows
+folders (Desktop, Documents, Downloads, Pictures, Videos, Music, OneDrive, Public),
+skips junk directories, and caps depth and result count. `find_path` returns matches as
+untrusted path text; `open_path` attaches a `path_open` approval card. `open_found_path`
+re-checks that the approved path still exists and remains under those roots before
+shell-opening it. Known-folder aliases such as “downloads” resolve first without a deep
+walk.

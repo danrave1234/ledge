@@ -33,6 +33,8 @@ describe("availability gating", () => {
       "prepare_computer_actions",
       "open_app",
       "list_installed_apps",
+      "find_path",
+      "open_path",
     ]);
   });
 
@@ -44,6 +46,8 @@ describe("availability gating", () => {
       "prepare_computer_actions",
       "open_app",
       "list_installed_apps",
+      "find_path",
+      "open_path",
     ]);
     expect(toolSpecs(on(), { ...all, web: false }).map((t) => t.name)).toEqual([
       "read_screen",
@@ -52,6 +56,8 @@ describe("availability gating", () => {
       "prepare_computer_actions",
       "open_app",
       "list_installed_apps",
+      "find_path",
+      "open_path",
     ]);
   });
 
@@ -66,6 +72,8 @@ describe("availability gating", () => {
       "prepare_computer_actions",
       "open_app",
       "list_installed_apps",
+      "find_path",
+      "open_path",
     ]);
   });
 
@@ -80,6 +88,8 @@ describe("availability gating", () => {
       "computer-control",
       "computer-control",
       "computer-control",
+      "folder-finder",
+      "folder-finder",
       "screen-context",
       "web-search",
     ]);

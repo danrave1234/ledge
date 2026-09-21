@@ -25,6 +25,7 @@ import { pluginActive } from "./plugins";
 import { buildSystemPrompt } from "./prompt";
 import { prepareComputerControlFallback } from "./plugins/computer-control/fallback";
 import { prepareAppLaunchFallback } from "./plugins/app-launcher/fallback";
+import { preparePathOpenFallback } from "./plugins/folder-finder/fallback";
 import type { ApprovedScreen, Attachment, Msg, Settings, TurnConsent } from "./types";
 import { persistAttachment, persistImage } from "./assets";
 import { messageContent } from "./attachments";
@@ -40,6 +41,8 @@ function fallbackCardPrompt(cardType: string): string {
       return "Review the browser navigation below, then press Open or Cancel.";
     case "app_launch":
       return "Review the app below, then press Open or Cancel.";
+    case "path_open":
+      return "Review the path below, then press Open or Cancel.";
     default:
       return "Review the action below, then approve or cancel it.";
   }
@@ -247,6 +250,9 @@ export async function send(text: string, options: SendOptions = {}) {
     const fallbackOutcome = provider.supportsTools
       ? null
       : ((await prepareComputerControlFallback(t, s, consent, options.approvedScreen)) ??
+        // Path finder before app launcher so "open downloads" hits the known
+        // folder, not a missing app name; path returns null for real app opens.
+        (await preparePathOpenFallback(t, s)) ??
         (await prepareAppLaunchFallback(t, s)));
     if (fallbackOutcome) {
       messages.update((m) =>

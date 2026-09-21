@@ -17,8 +17,9 @@ of fullscreen apps, and makes sensitive capabilities explicit at the composer.
 - Streaming Markdown chat, model selection, history, personas, memory selection,
   conversation compaction, source citations, code/image canvas, themes, autostart,
   global shortcut, tray, signed updates, multi-monitor docking, and game mode.
-- Built-in web search, screen context, approval-gated computer control, and an
-  approval-gated app launcher over Start Menu shortcuts and built-in Windows apps;
+- Built-in web search, screen context, approval-gated computer control, an
+  approval-gated app launcher over Start Menu shortcuts and built-in Windows apps,
+  and an approval-gated folder finder over known user folders;
   install-to-enable music integration for Windows media sessions, Spotify PKCE, and
   best-effort YouTube Music links.
 
@@ -87,6 +88,10 @@ private memory, and 8.5 MiB installer size; update them only from retained CI me
 - The app launcher opens only entries present in a freshly built index of Start Menu
   shortcuts and a fixed table of Windows apps; it never runs paths or command lines
   supplied by the model, and Store-only apps without a shortcut are out of scope.
+- The folder finder searches only bounded roots under the user profile and known
+  Windows folders, returns addresses as untrusted data, and opens a path only after
+  card approval with a fresh root check; it never opens model-supplied paths or scans
+  the whole disk.
 
 ## Quality bar
 
