@@ -49,22 +49,22 @@ needs an implementation-level dependency.
 
 ## Rust ownership
 
-| Module                | Responsibility                                                     |
-| --------------------- | ------------------------------------------------------------------ |
-| `window.rs`           | edge geometry, monitors, capture exclusion, game mode, cache, quit |
-| `provider.rs`         | Responses API request, SSE parser, models, request cancellation    |
-| `codex.rs`            | supported Codex CLI availability/login/status/logout/exec commands |
-| `screen.rs`           | chosen-display capture and Windows OCR                             |
-| `computer_control.rs` | tracked-window validation and approved keyboard/pointer actions    |
-| `app_launcher.rs`     | Start Menu app index and approved, index-validated app launching   |
-| `folder_finder.rs`    | Bounded known-folder search and approved path opening              |
-| `web.rs`              | bounded DuckDuckGo search and parsing                              |
-| `media.rs`            | Windows media sessions, control, and opt-in watcher                |
-| `spotify.rs`          | PKCE and allowlisted Spotify API proxy                             |
-| `youtube.rs`          | optional Data API search and safe Music URLs                       |
-| `secrets.rs`          | named Windows Credential Manager entries                           |
-| `store.rs`            | atomic JSON files, deletion, and bounded image assets              |
-| `http.rs`             | shared streaming and short-request clients                         |
+| Module                | Responsibility                                                        |
+| --------------------- | --------------------------------------------------------------------- |
+| `window.rs`           | edge geometry, monitors, capture exclusion, game mode, cache, quit    |
+| `provider.rs`         | Responses API request, SSE parser, models, request cancellation       |
+| `codex.rs`            | supported Codex CLI availability/login/status/logout/exec commands    |
+| `screen.rs`           | chosen-display capture and Windows OCR                                |
+| `computer_control.rs` | tracked-window validation and approved keyboard/pointer actions       |
+| `app_launcher.rs`     | Start Menu app index and approved, index-validated app launching      |
+| `folder_finder.rs`    | Bounded known-folder + Steam library search and approved path opening |
+| `web.rs`              | bounded DuckDuckGo search and parsing                                 |
+| `media.rs`            | Windows media sessions, control, and opt-in watcher                   |
+| `spotify.rs`          | PKCE and allowlisted Spotify API proxy                                |
+| `youtube.rs`          | optional Data API search and safe Music URLs                          |
+| `secrets.rs`          | named Windows Credential Manager entries                              |
+| `store.rs`            | atomic JSON files, deletion, and bounded image assets                 |
+| `http.rs`             | shared streaming and short-request clients                            |
 
 ## IPC surface
 

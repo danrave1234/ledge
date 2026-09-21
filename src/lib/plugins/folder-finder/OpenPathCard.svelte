@@ -29,6 +29,31 @@
     return p.kind === "folder" ? "Folder" : "File";
   }
 
+  /** Detect whether a path comes from a Steam library. */
+  function isSteamPath(p: FoundPath): boolean {
+    return p.path.toLowerCase().includes("steam");
+  }
+
+  /** Human-readable source label for the path. */
+  function sourceLabel(p: FoundPath): string {
+    return isSteamPath(p) ? "Steam" : "User";
+  }
+
+  /** Parent folder label (e.g. "in Steam Games" or "in Documents"). */
+  function parentLabel(p: FoundPath): string {
+    const parts = p.path.split("\\");
+    if (parts.length >= 2) {
+      const parent = parts[parts.length - 2];
+      return `in ${parent}`;
+    }
+    return "";
+  }
+
+  /** Open button label: folders say "Open in File Explorer". */
+  function openLabel(p: FoundPath): string {
+    return p.kind === "folder" ? "Open in File Explorer" : "Open";
+  }
+
   async function copyPath(path: string) {
     try {
       await navigator.clipboard.writeText(path);
@@ -75,7 +100,13 @@
           <div class="choice-info">
             <span class="name">{path.name}</span>
             <span class="path-text">{path.path}</span>
+            {#if parentLabel(path)}
+              <span class="parent-label">{parentLabel(path)}</span>
+            {/if}
           </div>
+          <span class="source-badge" class:is-steam={isSteamPath(path)}>
+            {sourceLabel(path)}
+          </span>
           <span class="kind-badge" class:is-folder={path.kind === "folder"}>
             {kindLabel(path)}
           </span>
@@ -90,17 +121,34 @@
         </div>
         <div class="selected-info">
           <strong class="name">{selected.name}</strong>
+          <span class="source-badge" class:is-steam={isSteamPath(selected)}>
+            {sourceLabel(selected)}
+          </span>
           <span class="kind-badge" class:is-folder={selected.kind === "folder"}>
             {kindLabel(selected)}
           </span>
         </div>
       </div>
-      <div class="path-box" role="button" tabindex={0} onclick={() => copyPath(selected.path)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') copyPath(selected.path); }}>
-        <code>{selected.path}</code>
+      {#if parentLabel(selected)}
+        <div class="parent-hint">{parentLabel(selected)}</div>
+      {/if}
+      <div
+        class="path-box"
+        role="button"
+        tabindex={0}
+        onclick={() => copyPath(selected?.path ?? "")}
+        onkeydown={(e) => {
+          if (e.key === "Enter" || e.key === " ") copyPath(selected?.path ?? "");
+        }}
+      >
+        <code>{selected?.path}</code>
         <button
           type="button"
           class="copy-btn"
-          onclick={(e) => { e.stopPropagation(); copyPath(selected.path); }}
+          onclick={(e) => {
+            e.stopPropagation();
+            copyPath(selected?.path ?? "");
+          }}
           aria-label="Copy path"
         >
           <Icon name={copied ? "check" : "copy"} size={14} />
@@ -118,12 +166,23 @@
     <div class="receipt success" role="status">
       <Icon name="check" size={14} />
       Opened <strong>{selected?.name}</strong>.
-      <div class="receipt-path" role="button" tabindex={0} onclick={() => copyPath(selected?.path ?? "")} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') copyPath(selected?.path ?? ""); }}>
+      <div
+        class="receipt-path"
+        role="button"
+        tabindex={0}
+        onclick={() => copyPath(selected?.path ?? "")}
+        onkeydown={(e) => {
+          if (e.key === "Enter" || e.key === " ") copyPath(selected?.path ?? "");
+        }}
+      >
         <code>{selected?.path}</code>
         <button
           type="button"
           class="copy-btn"
-          onclick={(e) => { e.stopPropagation(); copyPath(selected?.path ?? ""); }}
+          onclick={(e) => {
+            e.stopPropagation();
+            copyPath(selected?.path ?? "");
+          }}
           aria-label="Copy path"
         >
           <Icon name={copied ? "check" : "copy"} size={12} />
@@ -148,7 +207,7 @@
           Opening…
         {:else}
           <Icon name="folder" size={14} />
-          Open {selected?.name ?? ""}
+          {selected ? openLabel(selected) : "Open"}
         {/if}
       </button>
       <button
@@ -253,6 +312,35 @@
     color: var(--accent);
   }
 
+  .source-badge {
+    flex-shrink: 0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--surface-3, var(--surface));
+    color: var(--text-3);
+  }
+  .source-badge.is-steam {
+    background: color-mix(in srgb, #1a9fff 15%, transparent);
+    color: #1a9fff;
+  }
+
+  .parent-label {
+    font-size: var(--fs-xs);
+    color: var(--text-3);
+    font-style: italic;
+  }
+
+  .parent-hint {
+    margin-bottom: 6px;
+    font-size: var(--fs-xs);
+    color: var(--text-3);
+    font-style: italic;
+  }
+
   /* Single selected view */
   .selected-view {
     margin-bottom: 12px;
@@ -348,7 +436,9 @@
     animation: spin 0.6s linear infinite;
   }
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
   .error {
     margin-bottom: 10px;

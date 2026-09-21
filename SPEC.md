@@ -88,8 +88,9 @@ private memory, and 8.5 MiB installer size; update them only from retained CI me
 - The app launcher opens only entries present in a freshly built index of Start Menu
   shortcuts and a fixed table of Windows apps; it never runs paths or command lines
   supplied by the model, and Store-only apps without a shortcut are out of scope.
-- The folder finder searches only bounded roots under the user profile and known
-  Windows folders, returns addresses as untrusted data, and opens a path only after
+- The folder finder searches only bounded roots under the user profile, known
+  Windows folders, and Steam game libraries (discovered via `libraryfolders.vdf`);
+  it returns addresses as untrusted data, and opens a path only after
   card approval with a fresh root check; it never opens model-supplied paths or scans
   the whole disk.
 

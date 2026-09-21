@@ -69,7 +69,13 @@ export function pluginEnabled(
 
 // Core plugins ship with the app and are installed by default (still toggleable,
 // but not removable). Everything else uses the install-to-enable model.
-const CORE_PLUGINS = ["web-search", "screen-context", "computer-control", "app-launcher", "folder-finder"];
+const CORE_PLUGINS = [
+  "web-search",
+  "screen-context",
+  "computer-control",
+  "app-launcher",
+  "folder-finder",
+];
 export function isCorePlugin(id: string): boolean {
   return CORE_PLUGINS.includes(id);
 }

@@ -30,9 +30,9 @@ Built with **Tauri v2** (Rust core + WebView2) and **SvelteKit** (Svelte 5).
 - **App launcher** — "open Spotify" finds the Start Menu entry (or a built-in
   Windows app), previews the exact app with alternatives when the name is
   ambiguous, and opens it only after you approve.
-- **Folder finder** — "where is my downloads?" searches known folders on your PC,
-  shows the full path (and alternatives when the name is ambiguous), and opens it
-  only after you approve.
+- **Folder finder** — "where is my downloads?" searches known folders and Steam game
+  libraries on your PC, shows the full path (and alternatives when the name is
+  ambiguous), and opens it only after you approve.
 - **Game mode** (on by default) — any focused fullscreen app on any monitor hides
   the entire widget globally, even if Perch is docked on another display. It comes
   back when you alt-tab away.
@@ -90,7 +90,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 ```powershell
 $env:TAURI_SIGNING_PRIVATE_KEY = (Resolve-Path .\perch-updater.key)
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
-pnpm tauri build # release binary + signed NSIS/MSI installers
+pnpm tauri build # release binary + signed NSIS installer
 ```
 
 The private key is **not** in this repo — keep it secret. `createUpdaterArtifacts`
@@ -110,8 +110,8 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The Release workflow verifies the frontend and Rust code, builds signed Windows
-NSIS/MSI installers, publishes them to GitHub Releases, and uploads `latest.json`
+The Release workflow verifies the frontend and Rust code, builds a signed Windows
+NSIS installer, publishes it to GitHub Releases, and uploads `latest.json`
 for in-app updates. It can also be run manually from GitHub Actions; manual runs
 release the version currently declared in the three files above. The repository
 must retain the `TAURI_SIGNING_PRIVATE_KEY` Actions secret. If the key has a
