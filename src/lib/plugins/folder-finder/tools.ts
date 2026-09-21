@@ -20,7 +20,9 @@ export async function preparePathOpen(
 ): Promise<{ content: string; card?: { type: "path_open"; data: OpenPathCardData } }> {
   const query = typeof rawQuery === "string" ? rawQuery.trim() : "";
   if (!query)
-    return { content: "Error: `query` is required — the name of the folder or file to find." };
+    return {
+      content: "Error: `query` is required — the name of the folder or file to find.",
+    };
   if (query.length > MAX_QUERY_LENGTH)
     return { content: "Error: the query is too long to be a real folder or file name." };
   if (!normalizeQuery(query))
@@ -31,7 +33,7 @@ export async function preparePathOpen(
     return {
       content:
         `No folder or file matching "${query}" was found in your known folders. ` +
-        "This works only in the Windows desktop app and searches Desktop, Documents, Downloads, Pictures, Videos, Music, and OneDrive.",
+        "This works only in the Windows desktop app and searches Desktop, Documents, Downloads, Pictures, Videos, Music, OneDrive, and Steam game libraries.",
     };
   }
   const match = matchPath(query, paths);
@@ -56,12 +58,12 @@ export async function preparePathOpen(
 }
 
 /** Return the list of found paths as text for the model to display the address. */
-export async function preparePathFind(
-  rawQuery: unknown,
-): Promise<{ content: string }> {
+export async function preparePathFind(rawQuery: unknown): Promise<{ content: string }> {
   const query = typeof rawQuery === "string" ? rawQuery.trim() : "";
   if (!query)
-    return { content: "Error: `query` is required — the name of the folder or file to find." };
+    return {
+      content: "Error: `query` is required — the name of the folder or file to find.",
+    };
   if (query.length > MAX_QUERY_LENGTH)
     return { content: "Error: the query is too long to be a real folder or file name." };
   if (!normalizeQuery(query))
@@ -70,8 +72,7 @@ export async function preparePathFind(
   const paths = await searchPaths(query);
   if (!paths.length) {
     return {
-      content:
-        `No folder or file matching "${query}" was found in your known folders.`,
+      content: `No folder or file matching "${query}" was found in your known folders.`,
     };
   }
   const lines = paths.map((p) => {
@@ -91,7 +92,7 @@ export const findPathTool: PerchTool = {
   spec: {
     name: "find_path",
     description:
-      "Search for a folder or file on the user's PC by name (for example \"Downloads\", \"project files\", \"report.pdf\"). Returns matching paths as text so you can show the address. Does not open anything. Searches Desktop, Documents, Downloads, Pictures, Videos, Music, and OneDrive.",
+      'Search for a folder or file on the user\'s PC by name (for example "Downloads", "project files", "report.pdf", "steam dota"). Returns matching paths as text so you can show the address. Does not open anything. Searches Desktop, Documents, Downloads, Pictures, Videos, Music, OneDrive, and Steam game libraries.',
     parameters: {
       type: "object",
       properties: {
@@ -116,7 +117,7 @@ export const openPathTool: PerchTool = {
   spec: {
     name: "open_path",
     description:
-      "Prepare to open a folder or file on the user's PC by its name (for example \"Downloads\", \"my project folder\", \"report.pdf\"). This only creates an approval card — it does not open anything. Use when the user asks to find, locate, open, or show a folder or file. Do not use it for applications; use `open_app` for those.",
+      'Prepare to open a folder or file on the user\'s PC by its name (for example "Downloads", "my project folder", "report.pdf"). This only creates an approval card — it does not open anything. Use when the user asks to find, locate, open, or show a folder or file. Do not use it for applications; use `open_app` for those.',
     parameters: {
       type: "object",
       properties: {

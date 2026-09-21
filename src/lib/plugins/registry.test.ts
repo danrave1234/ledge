@@ -184,7 +184,9 @@ describe("plugin context blocks", () => {
     expect(names).not.toContain("list_installed_apps");
     expect(names).toContain("prepare_text_insertion");
     expect(names).toContain("find_path");
-    expect(pluginContexts(disabled, none).join("\n")).not.toContain("MUST call `open_app`");
+    expect(pluginContexts(disabled, none).join("\n")).not.toContain(
+      "MUST call `open_app`",
+    );
   });
 
   it("removes folder finder tools and instructions independently", () => {
@@ -193,7 +195,9 @@ describe("plugin context blocks", () => {
     expect(names).not.toContain("find_path");
     expect(names).not.toContain("open_path");
     expect(names).toContain("open_app");
-    expect(pluginContexts(disabled, none).join("\n")).not.toContain("MUST call `open_path`");
+    expect(pluginContexts(disabled, none).join("\n")).not.toContain(
+      "MUST call `open_path`",
+    );
   });
 
   it("removes computer control tools and instructions when disabled", () => {

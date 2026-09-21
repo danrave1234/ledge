@@ -13,6 +13,8 @@ const MAX_REQUEST_WORDS = 6;
 /** Known Windows folders that a bare "where is downloads" should still catch. */
 const KNOWN_FOLDERS =
   /^(?:(?:my\s+)?(?:desktop|documents|downloads|pictures|photos|videos|music)|home|user profile)$/i;
+/** Steam-related phrases: "steam", "steam games", "steam library", "steam dota", etc. */
+const STEAM_HINT = /\b(?:steam|epic|gog|xbox|origin)\b/i;
 
 export function pathQuery(text: string): string | null {
   if (text.split(/\s+/).filter(Boolean).length > MAX_REQUEST_WORDS + 3) return null;
@@ -22,6 +24,10 @@ export function pathQuery(text: string): string | null {
   if (!match) return null;
   const query = (match[1] ?? match[2] ?? "").trim();
   if (!query || query.split(/\s+/).length > MAX_REQUEST_WORDS) return null;
+  // Also catch "find the steam dota folder" — PATH_REQUEST may strip "folder"
+  // but the query should still contain the game name.
+  // If the query looks like a Steam game query, keep it.
+  if (STEAM_HINT.test(query)) return query;
   return query;
 }
 

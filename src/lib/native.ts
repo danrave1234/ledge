@@ -344,7 +344,10 @@ export async function searchPaths(query: string): Promise<FoundPath[]> {
 
 /** Open an approved path in Explorer (folder) or default handler (file).
  *  Rust re-validates the path against allowed roots before opening. */
-export async function openFoundPath(path: string, kind: "folder" | "file"): Promise<void> {
+export async function openFoundPath(
+  path: string,
+  kind: "folder" | "file",
+): Promise<void> {
   if (!isTauri()) throw new Error("Opening paths requires the Windows desktop app.");
   await cmd("open_found_path", { path, kind });
 }

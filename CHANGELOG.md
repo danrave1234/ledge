@@ -13,6 +13,14 @@ it reaches its first stable release.
   opening. Works with text-only providers for clear folder/file phrasing.
 - Redesigned the Folder finder approval card with folder/file icons, copy-to-clipboard,
   monospaced path display, kind badges, and improved success/cancelled states.
+- Extended Folder finder to search Steam game libraries. Queries like "steam dota" or
+  "find the steam dota folder" now discover installed games across all Steam library
+  drives. The approval card shows a Steam source badge, parent location, and an
+  "Open in File Explorer" button for folders. Platform hints (steam, epic, gog) are
+  stripped from queries so the core game name still matches.
+- Switched release packaging to NSIS-only. GitHub releases now ship a single
+  installer (plus updater signatures) instead of both NSIS and MSI, reducing
+  build time and release clutter.
 
 ## 0.1.2 - 2026-09-08
 

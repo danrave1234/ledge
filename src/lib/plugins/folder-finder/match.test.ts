@@ -27,6 +27,18 @@ describe("path name normalization", () => {
     expect(normalizeQuery("  Project   Files!! ")).toBe("project files");
     expect(normalizeQuery("where is report.pdf")).toBe("report.pdf");
   });
+
+  it("strips platform hints when other tokens remain", () => {
+    expect(normalizeQuery("steam dota")).toBe("dota");
+    expect(normalizeQuery("steam dota 2")).toBe("dota 2");
+    expect(normalizeQuery("epic fortnite")).toBe("fortnite");
+    expect(normalizeQuery("gog witcher")).toBe("witcher");
+  });
+
+  it("keeps platform hint when it's the only token", () => {
+    expect(normalizeQuery("steam")).toBe("steam");
+    expect(normalizeQuery("epic")).toBe("epic");
+  });
 });
 
 describe("path scoring", () => {

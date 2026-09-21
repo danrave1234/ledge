@@ -80,7 +80,9 @@ describe("open_path tool", () => {
     expect(out.card?.data).toMatchObject({
       query: "report",
     });
-    expect((out.card?.data as { alternatives: unknown[] }).alternatives.length).toBeGreaterThan(0);
+    expect(
+      (out.card?.data as { alternatives: unknown[] }).alternatives.length,
+    ).toBeGreaterThan(0);
     expect(out.content).toMatch(/several items/);
   });
 
@@ -89,10 +91,12 @@ describe("open_path tool", () => {
     expect((await openPathTool.run({ query: "   " }, context())).content).toMatch(
       /required/,
     );
-    expect((await openPathTool.run({ query: "!!!" }, context())).content).toMatch(/Error/);
-    expect((await openPathTool.run({ query: "x".repeat(121) }, context())).content).toMatch(
-      /too long/,
+    expect((await openPathTool.run({ query: "!!!" }, context())).content).toMatch(
+      /Error/,
     );
+    expect(
+      (await openPathTool.run({ query: "x".repeat(121) }, context())).content,
+    ).toMatch(/too long/);
     expect(searchPaths).not.toHaveBeenCalled();
   });
 
@@ -108,6 +112,7 @@ describe("open_path tool", () => {
     const out = await openPathTool.run({ query: "downloads" }, context());
     expect(out.card).toBeUndefined();
     expect(out.content).toMatch(/Windows desktop app/);
+    expect(out.content).toMatch(/Steam game libraries/);
   });
 });
 
@@ -127,6 +132,12 @@ describe("text-only fallback", () => {
     expect(pathQuery("find the Project Files folder")).toBe("Project Files");
     expect(pathQuery("open Documents folder")).toBe("Documents");
     expect(pathQuery("please locate my pictures")).toBe("pictures");
+  });
+
+  it("recognizes Steam game queries", () => {
+    expect(pathQuery("find the steam dota folder")).toBe("steam dota");
+    expect(pathQuery("where is steam games")).toBe("steam games");
+    expect(pathQuery("open the steam library folder")).toBe("steam library");
   });
 
   it("leaves URLs, absolute paths, and real questions to the model", () => {
@@ -151,7 +162,9 @@ describe("text-only fallback", () => {
     const openKnown = await preparePathOpenFallback("open downloads", ctx.settings);
     expect(openKnown?.card?.type).toBe("path_open");
 
-    expect(await preparePathOpenFallback("find photoshop folder", ctx.settings)).toBeNull();
+    expect(
+      await preparePathOpenFallback("find photoshop folder", ctx.settings),
+    ).toBeNull();
     expect(
       await preparePathOpenFallback("where is downloads", {
         ...ctx.settings,

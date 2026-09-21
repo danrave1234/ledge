@@ -19,17 +19,30 @@ const CONFIDENT_GAP = 10;
 
 /** Words users add that never appear in a folder or file name. */
 const FILLER = /\b(?:folder|file|directory|please|for me|now|the|my)\b/gi;
+/** Platform/store hints that users prepend (e.g. "steam dota") — strip when
+ * other tokens remain so the core name still matches. */
+const PLATFORM_HINTS = /\b(?:steam|epic|gog|xbox|origin|battle\.net)\b/gi;
 /** A verb the model may pass through verbatim ("find downloads"). */
-const LEADING_VERB = /^\s*(?:(?:find|locate|search|show|where is|where's|open)\s+)?(?:(?:up|the|my)\s+)*/i;
+const LEADING_VERB =
+  /^\s*(?:(?:find|locate|search|show|where is|where's|open)\s+)?(?:(?:up|the|my)\s+)*/i;
 
 export function normalizeQuery(text: string): string {
-  return text
+  let q = text
     .replace(LEADING_VERB, "")
     .replace(FILLER, " ")
     .toLowerCase()
     .replace(/[^\p{L}\p{N}+#.]+/gu, " ")
     .trim()
     .replace(/\s+/g, " ");
+
+  // Strip platform hints only when other meaningful tokens remain.
+  // "steam" alone → keep it; "steam dota" → "dota"
+  const withHintsRemoved = q.replace(PLATFORM_HINTS, " ").trim().replace(/\s+/g, " ");
+  if (withHintsRemoved && withHintsRemoved !== q) {
+    q = withHintsRemoved;
+  }
+
+  return q;
 }
 
 function normalizeName(name: string): string {
