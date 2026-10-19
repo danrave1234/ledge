@@ -1,7 +1,46 @@
 # Changelog
 
-All notable changes are documented here. Perch follows Semantic Versioning once
+All notable changes are documented here. Ledge follows Semantic Versioning once
 it reaches its first stable release.
+
+## 0.2.0 - 2026-10-19
+
+Perch is now **Ledge**.
+
+- New name and logo: an "L" ledge with a spark resting on it. The app,
+  tray, installer, executable (`ledge.exe`), and releases all say Ledge. Your
+  history, settings, and saved keys carry over untouched.
+- Motion throughout: the panel slides out of the edge it is docked to and back
+  in when it closes, views slide in the direction you navigate, menus and
+  toasts pop, and the handle fills while the hover delay counts down. Everything
+  respects Windows' "reduce motion" setting.
+- Undo instead of instant, permanent deletes for conversations, memories, and
+  personas.
+- Keyboard: Esc stops a reply, steps back, or collapses; Ctrl+N new chat;
+  Ctrl+H history; Ctrl+, settings. The global hotkey is now recorded by
+  pressing it, instead of typed (which registered half-typed shortcuts).
+- Composer: an unsent message survives collapsing the panel; paste or drop
+  images and files; the send button lights up only when there is something to
+  send; reasoning effort is a small menu instead of a seven-step cycle.
+- Screen review actually reviews: with "review before send" on, Send captures
+  the screen for you to check and redact first (with Undo redactions); the
+  next Send sends exactly that image.
+- Empty-state suggestions only appear when they can work, and switch on the
+  Web or Screen context they need.
+- Failed replies have a Try again button.
+- Approval cards (open app, open path, insert text, browser, steps) share one
+  design, and remember how you answered — a card you approved no longer shows
+  its Open button again after the panel reopens.
+- History is grouped by day, with hover actions, Enter to open the top result,
+  and Esc to clear the search.
+- Settings: proper switches, a slider for the hover delay, API-key format
+  check, two-click confirm instead of a native dialog when removing a plugin,
+  and a new About page with version, updates, and shortcuts.
+- Fixed: the panel could collapse right after a keyboard click when the
+  focused button was replaced (Send → Stop, an approval → its receipt), or at
+  startup when the app reset focus.
+- Fixed undefined style tokens (copied state, history search field, monospace
+  paths) and hand-rolled controls that drifted from the design system.
 
 ## 0.1.3 - 2026-09-21
 

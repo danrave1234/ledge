@@ -23,6 +23,17 @@ interface Source {
 export interface MsgCard {
   type: string;
   data: unknown;
+  /** How the user resolved an approval card ("opened", "cancelled", …), plus
+      what it acted on. Persisted so a resolved card never flips back to its
+      buttons after the panel closes and reopens — which would invite running
+      an already-approved action twice. Absent = still pending. */
+  resolved?: CardResolution;
+}
+
+export interface CardResolution {
+  status: string;
+  /** Short label of what was acted on, for the receipt ("Opened Spotify"). */
+  label?: string;
 }
 
 export type Attachment =
@@ -137,7 +148,7 @@ export interface Settings {
   hoverOpenDelay: number;
   autostart: boolean;
   hotkey: string;
-  /** True once the user has agreed to let Perch control playback. */
+  /** True once the user has agreed to let Ledge control playback. */
   musicConfirmed: boolean;
   gameMode: boolean;
   clearCacheOnLaunch: boolean;

@@ -16,6 +16,7 @@ export {
   importMemories,
   toggleMemory,
   deleteMemory,
+  restoreMemory,
   completeOnboarding,
   reopenLogin,
 } from "./settings";
@@ -26,6 +27,10 @@ export {
   type UiState,
   ui,
   setSettingsSection,
+  setDraft,
+  composerRequest,
+  requestComposer,
+  type ComposerRequest,
   canvas,
   openCanvas,
   openImage,
@@ -43,6 +48,11 @@ export {
   activeSummary,
   openConversation,
   deleteConversation,
+  removeConversation,
+  restoreConversation,
+  purgeConversationAssets,
+  resolveCard,
+  truncateFrom,
   clearHistory,
 } from "./conversations";
 export { customPersonas, getPersona, upsertPersona, deletePersona } from "./personas";
@@ -55,3 +65,12 @@ export {
   primarySession,
   isLive,
 } from "./music";
+export {
+  toasts,
+  toast,
+  toastUndo,
+  dismissToast,
+  runToastAction,
+  flushToasts,
+  type Toast,
+} from "./toast";

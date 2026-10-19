@@ -42,7 +42,7 @@
 </script>
 
 {#if show && session}
-  <div class:minimized class="dock" transition:slide={slideIn}>
+  <div class:minimized class="dock" transition:slide={slideIn()}>
     <button
       class="minimize"
       type="button"

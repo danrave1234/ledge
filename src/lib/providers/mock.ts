@@ -1,8 +1,8 @@
 import type { Provider, ModelInfo, StreamOpts } from "./types";
 
 const MODELS: ModelInfo[] = [
-  { id: "mock-fast", label: "Perch Mock · fast" },
-  { id: "mock-smart", label: "Perch Mock · smart" },
+  { id: "mock-fast", label: "Ledge Mock · fast" },
+  { id: "mock-smart", label: "Ledge Mock · smart" },
 ];
 
 function composeReply(opts: StreamOpts): string {
@@ -47,7 +47,7 @@ function composeReply(opts: StreamOpts): string {
     );
   } else if (last.trim().length === 0) {
     parts.push(
-      "I'm your Perch assistant. Ask me anything — I can look at what's on your screen, search the web, and switch models. Try _\"Is this job applicable to me?\"_",
+      "I'm your Ledge assistant. Ask me anything — I can look at what's on your screen, search the web, and switch models. Try _\"Is this job applicable to me?\"_",
     );
   } else {
     parts.push(

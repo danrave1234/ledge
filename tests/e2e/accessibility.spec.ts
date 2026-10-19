@@ -28,6 +28,9 @@ test("screen capture uses one accessible current-window control", async ({ page 
   await screen.focus();
   await expect(screen).toBeFocused();
   await screen.press("Enter");
+  await expect(screen).toHaveAttribute("aria-pressed", "true");
+  // Capture happens on send; the browser preview has no screen to capture.
+  await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText(
     "Screen capture requires the desktop app.",
   );
@@ -69,15 +72,27 @@ test("enabled screen review exposes only redaction controls", async ({ page }) =
   await page.goto("/");
   await page.getByRole("button", { name: /skip for now/i }).click();
   await page.getByRole("button", { name: "Screen", exact: true }).click();
+  await page.getByRole("textbox", { name: "Message" }).fill("What is this?");
+  // With review on, the first press captures for review instead of sending.
+  await page.getByRole("button", { name: "Capture screen for review" }).click();
 
   await expect(
     page.getByRole("region", { name: "Screen capture preview" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Redact" })).toBeVisible();
+  await expect(page.getByRole("log")).not.toContainText("What is this?");
+  // Undo only appears once something has been redacted.
+  await expect(page.getByRole("button", { name: "Undo redactions" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Recapture screen" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Remove screen capture" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Region" })).toHaveCount(0);
   await expect(page.locator('input[type="number"]')).toHaveCount(0);
+
+  // The second press sends exactly the reviewed capture.
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByRole("log")).toContainText("What is this?");
+  await expect(page.getByRole("region", { name: "Screen capture preview" })).toHaveCount(
+    0,
+  );
 });
 
 test("screen review preference is keyboard operable and persists", async ({ page }) => {
@@ -86,31 +101,31 @@ test("screen review preference is keyboard operable and persists", async ({ page
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("button", { name: "Plugins", exact: true }).click();
 
-  const review = page.getByRole("button", {
+  const review = page.getByRole("switch", {
     name: "Review and redact before sending",
   });
-  const automatic = page.getByRole("button", {
+  const automatic = page.getByRole("switch", {
     name: "Automatically redact sensitive data",
   });
-  await expect(automatic).toHaveAttribute("aria-pressed", "true");
+  await expect(automatic).toHaveAttribute("aria-checked", "true");
   await automatic.focus();
   await automatic.press("Enter");
-  await expect(automatic).toHaveAttribute("aria-pressed", "false");
-  await expect(review).toHaveAttribute("aria-pressed", "false");
+  await expect(automatic).toHaveAttribute("aria-checked", "false");
+  await expect(review).toHaveAttribute("aria-checked", "false");
   await review.focus();
   await review.press("Enter");
-  await expect(review).toHaveAttribute("aria-pressed", "true");
+  await expect(review).toHaveAttribute("aria-checked", "true");
 
   await page.waitForTimeout(300);
   await page.reload();
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("button", { name: "Plugins", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Review and redact before sending" }),
-  ).toHaveAttribute("aria-pressed", "true");
+    page.getByRole("switch", { name: "Review and redact before sending" }),
+  ).toHaveAttribute("aria-checked", "true");
   await expect(
-    page.getByRole("button", { name: "Automatically redact sensitive data" }),
-  ).toHaveAttribute("aria-pressed", "false");
+    page.getByRole("switch", { name: "Automatically redact sensitive data" }),
+  ).toHaveAttribute("aria-checked", "false");
 });
 
 test("composer toggles remain enabled after sending until explicitly disabled", async ({
@@ -149,7 +164,7 @@ test("composer toggles remain enabled after sending until explicitly disabled", 
   await web.click();
   await screen.click();
 
-  await page.getByPlaceholder("Message your assistant…").fill("Keep my toggles on");
+  await page.getByRole("textbox", { name: "Message" }).fill("Keep my toggles on");
   await page.getByRole("button", { name: "Send", exact: true }).click();
 
   await expect(web).toHaveAttribute("aria-pressed", "true");

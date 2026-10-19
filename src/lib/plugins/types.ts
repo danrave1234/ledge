@@ -1,5 +1,5 @@
 import type { Component } from "svelte";
-import type { PerchTool } from "../tools";
+import type { LedgeTool } from "../tools";
 import type { Settings, TurnConsent } from "../types";
 
 /* ==========================================================================
@@ -25,7 +25,7 @@ export interface PluginModule {
 
   /** Tools this plugin offers the model. Each does its own gating in
       `available()` — the plugin being active is necessary, not sufficient. */
-  tools?: PerchTool[];
+  tools?: LedgeTool[];
 
   /** A block of system prompt contributed while the plugin is active.
    *

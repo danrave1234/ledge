@@ -1,11 +1,11 @@
-import type { PerchTool } from "../tools";
+import type { LedgeTool } from "../tools";
 import type { PluginModule } from "./types";
 import { pluginActive } from "../plugins";
 import ScreenContextSettings from "./screen-context/ScreenContextSettings.svelte";
 
 const MAX_SCREEN_TEXT = 6000;
 
-const readScreenTool: PerchTool = {
+const readScreenTool: LedgeTool = {
   pluginId: "screen-context",
   runningLabel: "Reading your screen",
   capability: "read what is currently on the user's screen",

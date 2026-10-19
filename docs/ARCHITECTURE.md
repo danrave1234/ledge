@@ -1,6 +1,6 @@
 # Architecture
 
-Perch is a static SvelteKit SPA inside a Tauri v2/WebView2 shell. `src/lib/native.ts`
+Ledge is a static SvelteKit SPA inside a Tauri v2/WebView2 shell. `src/lib/native.ts`
 is the only frontend IPC boundary; browser preview fallbacks live beside each wrapper.
 
 ## Runtime flow
@@ -118,7 +118,7 @@ built-in Windows apps) and shows the exact entry — with alternatives when the 
 not certain — on an approval card. `app_launch` rebuilds the index and refuses any
 entry whose name, path, and kind are not present in it, so an edited card payload or
 a path outside the Start Menu cannot be opened. Launching uses the shell `open` verb
-with no arguments; Perch never runs a command line.
+with no arguments; Ledge never runs a command line.
 
 Folder finding mirrors that trust model. The model supplies only a name or query;
 `search_paths_cmd` walks bounded roots under the user profile and known Windows

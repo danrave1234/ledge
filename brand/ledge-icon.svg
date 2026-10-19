@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Ledge app icon: an "L" ledge with a spark perched on it. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9466"/>
+      <stop offset="1" stop-color="#ee4f27"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#tile)"/>
+  <path d="M300 232 V724 H780" fill="none" stroke="#1a1820" stroke-width="136" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M590 236 Q610 412 786 432 Q610 452 590 628 Q570 452 394 432 Q570 412 590 236z" fill="#ffffff"/>
+</svg>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Conversation } from "./types";
 import {
   conversationToMarkdown,
+  dateGroup,
   exportFilename,
   highlightParts,
   historyToJson,
@@ -85,5 +86,23 @@ describe("history export", () => {
 
   it("sanitizes suggested filenames", () => {
     expect(exportFilename("A: / chat", "md")).toBe("A- - chat.md");
+  });
+});
+
+describe("dateGroup", () => {
+  // Noon on a Wednesday, local time.
+  const now = new Date(2026, 9, 14, 12, 0, 0).getTime();
+  const at = (y: number, m: number, d: number, h = 9) => new Date(y, m, d, h).getTime();
+
+  it("buckets by calendar day, not by 24-hour windows", () => {
+    expect(dateGroup(at(2026, 9, 14, 0), now)).toBe("Today");
+    expect(dateGroup(at(2026, 9, 13, 23), now)).toBe("Yesterday");
+    expect(dateGroup(at(2026, 9, 13, 0), now)).toBe("Yesterday");
+  });
+
+  it("uses rolling week and month buckets, then month names", () => {
+    expect(dateGroup(at(2026, 9, 9), now)).toBe("Previous 7 days");
+    expect(dateGroup(at(2026, 8, 20), now)).toBe("Previous 30 days");
+    expect(dateGroup(at(2026, 2, 3), now)).toBe("March 2026");
   });
 });

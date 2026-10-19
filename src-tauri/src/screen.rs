@@ -100,7 +100,7 @@ fn window_bounds_score(target: WindowBounds, candidate: WindowBounds) -> Option<
 }
 
 /// Pick the monitor to capture: the display the widget is docked to when the
-/// user chose one, else the primary. Mirrors `window::pick_monitor`, so Perch
+/// user chose one, else the primary. Mirrors `window::pick_monitor`, so Ledge
 /// captures the screen it is actually sitting on.
 fn pick(display: Option<usize>) -> Result<Monitor, String> {
     let monitors = Monitor::all().map_err(|e| e.to_string())?;

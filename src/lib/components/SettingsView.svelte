@@ -21,7 +21,13 @@
     flushWrites,
     ui,
     setSettingsSection,
+    restoreMemory,
+    toast,
+    toastUndo,
+    flushToasts,
   } from "$lib/stores";
+  import HotkeyInput from "$lib/components/HotkeyInput.svelte";
+  import { hotkeyLabel } from "$lib/hotkey";
   import { BUILTIN_PERSONAS } from "$lib/personas";
   import { buildSystemPrompt } from "$lib/prompt";
   import { toolCapabilities } from "$lib/tools";
@@ -50,12 +56,10 @@
     type MonitorInfo,
   } from "$lib/native";
   import { setView, stop } from "$lib/controller";
-  import { fadeIn } from "$lib/motion";
-  import { fade } from "svelte/transition";
+  import { flyIn } from "$lib/motion";
+  import { fly } from "svelte/transition";
   import type { Placement, HandleStyle, ThemeMode } from "$lib/types";
 
-  /** How long transient confirmations stay on screen. */
-  const NOTICE_MS = 3500;
   /** Window for the second click of a destructive confirm. */
   const CONFIRM_MS = 3000;
 
@@ -69,6 +73,7 @@
     { id: "plugins", label: "Plugins", icon: "stack" },
     { id: "account", label: "Account", icon: "key" },
     { id: "storage", label: "Storage", icon: "database" },
+    { id: "about", label: "About", icon: "ledge" },
   ] as const;
   // Kept in the ui store, not local state: the panel unmounts while collapsed.
   let section = $derived($ui.settingsSection);
@@ -112,15 +117,45 @@
     await refreshProviderAuth();
   }
 
+  let keyError = $state("");
+  let savingKey = $state(false);
   async function saveKey() {
-    await saveApiKey(keyInput);
-    keyInput = "";
-    await syncAuth();
-    if (connected) setProvider("openai");
+    const key = keyInput.trim();
+    if (!key) return;
+    if (!key.startsWith("sk-")) {
+      keyError = "That doesn't look like an OpenAI key — they start with “sk-”.";
+      return;
+    }
+    keyError = "";
+    savingKey = true;
+    try {
+      await saveApiKey(key);
+      keyInput = "";
+      await syncAuth();
+      if (connected) {
+        setProvider("openai");
+        toast("OpenAI key saved — OpenAI models are ready", { tone: "ok" });
+      } else keyError = "Couldn't save the key. Try again.";
+    } catch {
+      keyError = "Couldn't save the key. Try again.";
+    } finally {
+      savingKey = false;
+    }
   }
+  let confirmRemoveKey = $state(false);
+  let removeKeyTimer: ReturnType<typeof setTimeout>;
   async function clearKey() {
+    if (!confirmRemoveKey) {
+      confirmRemoveKey = true;
+      clearTimeout(removeKeyTimer);
+      removeKeyTimer = setTimeout(() => (confirmRemoveKey = false), CONFIRM_MS);
+      return;
+    }
+    clearTimeout(removeKeyTimer);
+    confirmRemoveKey = false;
     await clearApiKey();
     await syncAuth();
+    toast("OpenAI key removed");
   }
 
   /* ---------- quit ---------- */
@@ -139,6 +174,7 @@
     stop();
     // Persist anything still queued before the process goes away.
     try {
+      flushToasts();
       await flushWrites();
     } finally {
       await quitApp();
@@ -146,15 +182,13 @@
   }
 
   /* ---------- storage ---------- */
-  let cacheMsg = $state("");
   async function doClearCache() {
     try {
       await clearCache();
-      cacheMsg = "Cache cleared — history and settings untouched.";
+      toast("Cache cleared — history and settings untouched", { tone: "ok" });
     } catch {
-      cacheMsg = "Couldn't clear the cache.";
+      toast("Couldn't clear the cache", { tone: "error" });
     }
-    setTimeout(() => (cacheMsg = ""), NOTICE_MS);
   }
 
   let confirmClear = $state(false);
@@ -170,6 +204,7 @@
     confirmClear = false;
     stop();
     clearHistory();
+    toast("Conversation history cleared");
   }
 
   /* ---------- updates ---------- */
@@ -254,14 +289,28 @@
     installPlugin(id);
   }
 
+  /** Plugin whose Remove was clicked once; a second click within CONFIRM_MS
+      removes it. Same two-click pattern as Quit and Clear history, instead of a
+      native window.confirm that looked foreign and blocked the whole widget. */
+  let confirmRemove = $state("");
+  let removeTimer: ReturnType<typeof setTimeout>;
   async function doRemovePlugin(id: string, name: string) {
-    if (
-      !window.confirm(`Remove ${name} and delete its saved settings and credentials?`)
-    ) {
+    if (confirmRemove !== id) {
+      confirmRemove = id;
+      clearTimeout(removeTimer);
+      removeTimer = setTimeout(() => (confirmRemove = ""), CONFIRM_MS);
       return;
     }
+    clearTimeout(removeTimer);
+    confirmRemove = "";
     await deletePluginData(id);
     uninstallPlugin(id);
+    toast(`Removed ${name}`);
+  }
+
+  function doInstallToast(id: string, name: string) {
+    doInstall(id);
+    toast(`${name} installed`, { tone: "ok" });
   }
 
   // Settings panels contributed by installed plugins, rendered under the grid.
@@ -289,19 +338,24 @@
 
   let memInput = $state("");
   let importText = $state("");
-  let importMsg = $state("");
   function doAddMemory() {
     if (!memInput.trim()) return;
     addMemory(memInput);
     memInput = "";
   }
+  function doDeleteMemory(id: string) {
+    const index = s.memories.findIndex((m) => m.id === id);
+    const memory = s.memories[index];
+    if (!memory) return;
+    deleteMemory(id);
+    toastUndo("Memory deleted", () => restoreMemory(memory, index));
+  }
   function doImport() {
     const n = importMemories(importText);
     importText = "";
-    importMsg = n
-      ? `Imported ${n} ${n === 1 ? "memory" : "memories"}.`
-      : "Nothing to import.";
-    setTimeout(() => (importMsg = ""), NOTICE_MS);
+    toast(n ? `Imported ${n} ${n === 1 ? "memory" : "memories"}` : "Nothing to import", {
+      tone: n ? "ok" : "neutral",
+    });
   }
 </script>
 
@@ -321,7 +375,7 @@
 
   <div class="content">
     {#key section}
-      <div class="pane" in:fade={fadeIn}>
+      <div class="pane" in:fly={flyIn()}>
         {#if section === "general"}
           <h3>General</h3>
           <span class="lbl">Placement</span>
@@ -371,9 +425,10 @@
             <button
               class="switch"
               class:on={s.hoverOpen}
-              aria-pressed={s.hoverOpen}
+              role="switch"
+              aria-checked={s.hoverOpen}
               onclick={() => updateSettings({ hoverOpen: !s.hoverOpen })}
-              aria-label="Toggle hover open"><i></i></button
+              aria-label="Open on hover"><i></i></button
             >
           </div>
           {#if s.hoverOpen}
@@ -382,7 +437,7 @@
             </label>
             <input
               id="hover-delay"
-              class="field"
+              class="range"
               type="range"
               min="0"
               max="3"
@@ -394,20 +449,21 @@
                 })}
             />
             <p class="note">
-              Keep the pointer on the handle for this long to open Perch.
+              Keep the pointer on the handle for this long to open Ledge.
             </p>
           {/if}
           <div class="row">
             <div>
               <span class="rl">Run on startup</span>
-              <span class="rh">Launch Perch when Windows starts</span>
+              <span class="rh">Launch Ledge when Windows starts</span>
             </div>
             <button
               class="switch"
               class:on={s.autostart}
-              aria-pressed={s.autostart}
+              role="switch"
+              aria-checked={s.autostart}
               onclick={() => updateSettings({ autostart: !s.autostart })}
-              aria-label="Toggle autostart"><i></i></button
+              aria-label="Run on startup"><i></i></button
             >
           </div>
           <div class="row">
@@ -418,38 +474,40 @@
             <button
               class="switch"
               class:on={s.gameMode}
-              aria-pressed={s.gameMode}
+              role="switch"
+              aria-checked={s.gameMode}
               onclick={() => updateSettings({ gameMode: !s.gameMode })}
-              aria-label="Toggle game mode"><i></i></button
+              aria-label="Game mode"><i></i></button
             >
           </div>
           {#if s.gameMode}
             <p class="note">
               A focused fullscreen app — borderless or exclusive — on any monitor hides
-              Perch everywhere, even when it is docked on another display. It returns when
+              Ledge everywhere, even when it is docked on another display. It returns when
               you alt-tab away.
             </p>
           {/if}
-          <label class="lbl" for="hotkey">Global hotkey</label>
-          <input
+          <span class="lbl" id="hotkey-label">Global hotkey</span>
+          <HotkeyInput
             id="hotkey"
-            class="field"
             value={s.hotkey}
-            oninput={(e) =>
-              updateSettings({ hotkey: (e.target as HTMLInputElement).value })}
-            placeholder="CommandOrControl+Shift+Space"
+            onchange={(hotkey) => {
+              updateSettings({ hotkey });
+              toast("Hotkey updated", { tone: "ok" });
+            }}
           />
+          <p class="note">Opens or closes Ledge from anywhere.</p>
 
           <span class="lbl">Quit</span>
           <p class="note first">
-            Collapsing hides Perch to the handle and it keeps running. Quitting closes it
+            Collapsing hides Ledge to the handle and it keeps running. Quitting closes it
             completely — reopen it from the Start menu{s.autostart
               ? ", or it will start again at your next sign-in since Run on startup is on"
               : ""}. It's also in the tray icon's menu.
           </p>
           <button class="btn btn-danger gap" onclick={doQuit}>
             <Icon name="power" size={15} />
-            {confirmQuit ? "Click again to quit" : "Quit Perch"}
+            {confirmQuit ? "Click again to quit" : "Quit Ledge"}
           </button>
         {:else if section === "appearance"}
           <h3>Appearance</h3>
@@ -500,7 +558,7 @@
               updateSettings({ about: (e.target as HTMLTextAreaElement).value })}
             placeholder="Your role, projects, what you're working toward… (paste your ChatGPT custom instructions)"
           ></textarea>
-          <label class="lbl" for="style">How Perch should respond</label>
+          <label class="lbl" for="style">How Ledge should respond</label>
           <textarea
             id="style"
             class="field"
@@ -538,22 +596,34 @@
               placeholder="Remember something about you…"
               onkeydown={(e) => e.key === "Enter" && doAddMemory()}
             />
-            <button class="btn" onclick={doAddMemory}>Add</button>
+            <button class="btn" onclick={doAddMemory} disabled={!memInput.trim()}
+              >Add</button
+            >
           </div>
+          {#if !s.memories.length}
+            <p class="note">
+              Nothing saved yet. Add facts Ledge should always keep in mind — your role,
+              preferences, ongoing projects.
+            </p>
+          {/if}
           <div class="mems">
             {#each s.memories as m (m.id)}
               <div class="mem" class:off={!m.enabled}>
                 <button
-                  class="dot"
+                  class="switch sm"
                   class:on={m.enabled}
+                  role="switch"
+                  aria-checked={m.enabled}
                   onclick={() => toggleMemory(m.id)}
-                  aria-label="Toggle memory"
-                ></button>
+                  aria-label="Use this memory"
+                  title={m.enabled ? "Used in replies" : "Ignored"}><i></i></button
+                >
                 <span class="mtext">{m.text}</span>
                 <button
-                  class="icon-btn"
-                  aria-label="Delete"
-                  onclick={() => deleteMemory(m.id)}
+                  class="icon-btn danger"
+                  aria-label="Delete memory"
+                  title="Delete"
+                  onclick={() => doDeleteMemory(m.id)}
                 >
                   <Icon name="trash" size={14} />
                 </button>
@@ -569,8 +639,9 @@
             placeholder="Paste your ChatGPT memories here — one per line — and import them all"
           ></textarea>
           <div class="addrow">
-            <button class="btn btn-accent" onclick={doImport}>Import memories</button>
-            {#if importMsg}<span class="ok">{importMsg}</span>{/if}
+            <button class="btn" onclick={doImport} disabled={!importText.trim()}>
+              Import memories
+            </button>
           </div>
 
           <div class="mhead">
@@ -604,9 +675,10 @@
                     <button
                       class="switch sm"
                       class:on={pluginEnabled(s.plugins, p.id)}
-                      aria-pressed={pluginEnabled(s.plugins, p.id)}
+                      role="switch"
+                      aria-checked={pluginEnabled(s.plugins, p.id)}
                       onclick={() => togglePlugin(p.id)}
-                      aria-label={"Toggle " + p.name}><i></i></button
+                      aria-label={"Enable " + p.name}><i></i></button
                     >
                     <span class="pcore">Built-in</span>
                   </div>
@@ -615,19 +687,21 @@
                     <button
                       class="switch sm"
                       class:on={pluginEnabled(s.plugins, p.id)}
-                      aria-pressed={pluginEnabled(s.plugins, p.id)}
+                      role="switch"
+                      aria-checked={pluginEnabled(s.plugins, p.id)}
                       onclick={() => togglePlugin(p.id)}
-                      aria-label={"Toggle " + p.name}><i></i></button
+                      aria-label={"Enable " + p.name}><i></i></button
                     >
                     <button
                       class="link-btn premove"
+                      class:confirming={confirmRemove === p.id}
                       onclick={() => doRemovePlugin(p.id, p.name)}
                     >
-                      Remove
+                      {confirmRemove === p.id ? "Click again to remove" : "Remove"}
                     </button>
                   </div>
                 {:else}
-                  <button class="btn btn-sm" onclick={() => doInstall(p.id)}>
+                  <button class="btn btn-sm" onclick={() => doInstallToast(p.id, p.name)}>
                     <Icon name="download" size={13} /> Install
                   </button>
                 {/if}
@@ -657,20 +731,36 @@
           {#if connected}
             <div class="connected">
               <Icon name="check" size={15} /> OpenAI API key saved
-              <button class="link-btn link-btn-danger push" onclick={clearKey}
-                >Remove</button
-              >
+              <button class="link-btn link-btn-danger push" onclick={clearKey}>
+                {confirmRemoveKey ? "Click again to remove" : "Remove"}
+              </button>
             </div>
           {:else}
             <label class="lbl" for="apikey">OpenAI API key</label>
-            <input
-              id="apikey"
-              class="field"
-              type="password"
-              bind:value={keyInput}
-              placeholder="sk-…"
-            />
-            <button class="btn btn-accent gap" onclick={saveKey}>Save key</button>
+            <div class="addrow">
+              <input
+                id="apikey"
+                class="field"
+                type="password"
+                autocomplete="off"
+                bind:value={keyInput}
+                oninput={() => (keyError = "")}
+                onkeydown={(e) => e.key === "Enter" && saveKey()}
+                placeholder="sk-…"
+                aria-invalid={!!keyError}
+                aria-describedby={keyError ? "apikey-error" : undefined}
+              />
+              <button
+                class="btn btn-accent"
+                onclick={saveKey}
+                disabled={!keyInput.trim() || savingKey}
+              >
+                {savingKey ? "Saving…" : "Save key"}
+              </button>
+            </div>
+            {#if keyError}<p class="err" id="apikey-error" role="alert">
+                {keyError}
+              </p>{/if}
           {/if}
           <p class="note">
             Stored in Windows Credential Manager, never in plain text. OpenAI models only
@@ -711,19 +801,19 @@
           <button class="btn" onclick={doClearCache}>
             <Icon name="refresh" size={15} /> Clear cache
           </button>
-          {#if cacheMsg}<p class="ok">{cacheMsg}</p>{/if}
           <div class="row">
             <div>
               <span class="rl">Clear cache on launch</span>
-              <span class="rh">Keeps Perch light over time</span>
+              <span class="rh">Keeps Ledge light over time</span>
             </div>
             <button
               class="switch"
               class:on={s.clearCacheOnLaunch}
-              aria-pressed={s.clearCacheOnLaunch}
+              role="switch"
+              aria-checked={s.clearCacheOnLaunch}
               onclick={() =>
                 updateSettings({ clearCacheOnLaunch: !s.clearCacheOnLaunch })}
-              aria-label="Toggle clear cache on launch"><i></i></button
+              aria-label="Clear cache on launch"><i></i></button
             >
           </div>
           <button class="btn btn-danger gap" onclick={doClearHistory}>
@@ -732,6 +822,16 @@
               ? "Click again to confirm"
               : `Clear conversation history (${convCount})`}
           </button>
+        {:else if section === "about"}
+          <div class="about">
+            <img class="logo" src="/favicon.png" alt="" width="56" height="56" />
+            <div>
+              <h3 class="flush">Ledge</h3>
+              <p class="note first">
+                Version {version || "—"} · an AI assistant that lives on the edge of your screen
+              </p>
+            </div>
+          </div>
           <span class="lbl">Updates</span>
           <button class="btn" onclick={doCheckUpdate} disabled={checking}>
             <Icon name="download" size={15} />
@@ -752,7 +852,21 @@
           {#if $justUpdatedFrom}
             <p class="ok">Updated from v{$justUpdatedFrom} — your data was migrated.</p>
           {/if}
-          <p class="ver">Perch {version || "—"}</p>
+          <span class="lbl">Shortcuts</span>
+          <dl class="keys">
+            <dt>{hotkeyLabel(s.hotkey).join(" + ") || "—"}</dt>
+            <dd>Open or close Ledge from anywhere</dd>
+            <dt>Enter · Shift+Enter</dt>
+            <dd>Send · new line</dd>
+            <dt>Esc</dt>
+            <dd>Stop a reply, go back, or collapse</dd>
+            <dt>Ctrl+N</dt>
+            <dd>New chat</dd>
+            <dt>Ctrl+H</dt>
+            <dd>History</dd>
+            <dt>Ctrl+,</dt>
+            <dd>Settings</dd>
+          </dl>
         {/if}
       </div>
     {/key}
@@ -939,19 +1053,6 @@
   .mem.off {
     opacity: 0.5;
   }
-  .dot {
-    flex-shrink: 0;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    border: none;
-    background: var(--text-3);
-    cursor: pointer;
-    transition: background var(--dur) var(--ease);
-  }
-  .dot.on {
-    background: var(--accent);
-  }
   .mtext {
     flex: 1;
     font-size: var(--fs-sm);
@@ -976,6 +1077,7 @@
     letter-spacing: 0.05em;
   }
   .pgrid {
+    margin-top: 14px;
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
@@ -1018,6 +1120,10 @@
     align-items: center;
     gap: 10px;
   }
+  .premove.confirming {
+    color: var(--danger);
+    font-weight: 600;
+  }
   .premove:hover {
     color: var(--danger);
   }
@@ -1055,9 +1161,40 @@
     white-space: pre-wrap;
     user-select: text;
   }
-  .ver {
+  .err {
+    margin: 6px 0 0;
+    color: var(--danger);
+    font-size: var(--fs-sm);
+  }
+  .about {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+  }
+  .logo {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+  h3.flush {
+    margin: 0 0 2px;
+  }
+  .keys {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 6px 14px;
+    margin: 0;
+    font-size: var(--fs-sm);
+  }
+  .keys dt {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .keys dd {
+    margin: 0;
     color: var(--text-3);
-    font-size: var(--fs-xs);
-    margin-top: 20px;
   }
 </style>

@@ -62,7 +62,7 @@ fn turn_finished(message: &Value, turn_id: &str) -> Option<Result<(), String>> {
     Some(Err(error.to_string()))
 }
 
-/// Working root for `codex exec`. Perch inherits whatever directory it was
+/// Working root for `codex exec`. Ledge inherits whatever directory it was
 /// launched from — Program Files, or a game's folder via autostart — which is
 /// not somewhere the agent should be rooted. The user's home is stable and
 /// always exists.
@@ -96,7 +96,7 @@ fn build(args: &[&str], _show_console: bool) -> Command {
 
 /// Background invocation: no console window.
 ///
-/// Everything Perch runs on its own initiative uses this — availability and
+/// Everything Ledge runs on its own initiative uses this — availability and
 /// login probes, logout, and `exec` for each message. Without the flag every
 /// one of them flashed a terminal on screen, and the probes repeat (the model
 /// picker asks on open, and sign-in polls every couple of seconds), so they
@@ -246,7 +246,7 @@ pub async fn codex_exec(
         write_request(
             &mut stdin,
             json!({"id": 1, "method": "initialize", "params": {
-                "clientInfo": {"name": "perch", "title": "Perch", "version": env!("CARGO_PKG_VERSION")},
+                "clientInfo": {"name": "ledge", "title": "Ledge", "version": env!("CARGO_PKG_VERSION")},
                 "capabilities": {}
             }}),
         )?;

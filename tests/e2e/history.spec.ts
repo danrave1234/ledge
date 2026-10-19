@@ -43,7 +43,7 @@ test("history search is keyboard accessible and restores stable order", async ({
 
 test("browser preview exports the complete history", async ({ page }) => {
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export all as JSON" }).click();
+  await page.getByRole("button", { name: "Export all" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("perch-history.json");
+  expect(download.suggestedFilename()).toBe("ledge-history.json");
 });

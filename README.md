@@ -1,6 +1,6 @@
-# Perch
+# Ledge
 
-A lightweight, edge-docked AI assistant widget for Windows. Perch lives as a small
+A lightweight, edge-docked AI assistant widget for Windows. Ledge lives as a small
 textless handle at the edge of your screen, hover-opens into a chat panel, and can
 see your screen, search the web, and switch models — built to feel native and stay
 light (about 27 MB idle private memory in current measurements), not like a full application.
@@ -34,7 +34,7 @@ Built with **Tauri v2** (Rust core + WebView2) and **SvelteKit** (Svelte 5).
   libraries on your PC, shows the full path (and alternatives when the name is
   ambiguous), and opens it only after you approve.
 - **Game mode** (on by default) — any focused fullscreen app on any monitor hides
-  the entire widget globally, even if Perch is docked on another display. It comes
+  the entire widget globally, even if Ledge is docked on another display. It comes
   back when you alt-tab away.
 - **Durable memory** — atomic app-data stores, serialized quit-safe writes, and
   separate bounded image assets survive WebView2 cache clears.
@@ -60,7 +60,7 @@ For a private build that lets every user click **Connect Spotify** without
 entering an app ID, copy `.env.example` to `.env` and set
 `PUBLIC_SPOTIFY_CLIENT_ID` to your registered Spotify PKCE client ID before
 building. Each person still authorizes their own Spotify account; tokens stay
-on their Windows account. Without this build-time value, Perch guides each user
+on their Windows account. Without this build-time value, Ledge guides each user
 through creating their own free Spotify app. YouTube Music uses the browser's
 existing sign-in; its optional Data API key only improves exact-match search.
 
@@ -121,6 +121,6 @@ password, also set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 
 Personal project / work in progress. The Codex path requires the official
 [OpenAI Codex CLI](https://github.com/openai/codex) installed (`npm i -g @openai/codex`)
-and `codex login`. Perch shells out to that CLI and uses only `codex login status` /
+and `codex login`. Ledge shells out to that CLI and uses only `codex login status` /
 `codex logout`; it never opens or copies the CLI's authentication files. OpenAI API
 access remains bring-your-own-key and is stored in Windows Credential Manager.

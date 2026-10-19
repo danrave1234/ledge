@@ -3,8 +3,19 @@
   import { settings } from "$lib/stores";
   import { openPinned } from "$lib/controller";
 
-  let { onhover, onhoverend }: { onhover?: () => void; onhoverend?: () => void } =
-    $props();
+  let {
+    onhover,
+    onhoverend,
+    arming = false,
+    armMs = 0,
+  }: {
+    onhover?: () => void;
+    onhoverend?: () => void;
+    /** The hover-open delay is counting down: fill the mark so the wait reads
+        as "opening…" rather than as an unresponsive handle. */
+    arming?: boolean;
+    armMs?: number;
+  } = $props();
 
   let s = $derived($settings);
   let vertical = $derived(s.placement !== "top");
@@ -22,11 +33,13 @@
   <button
     class="handle"
     class:vertical
+    class:arming
+    style="--arm-ms: {armMs}ms"
     data-mark={s.handle}
     onmouseenter={() => onhover?.()}
     onmouseleave={() => onhoverend?.()}
     onclick={() => openPinned()}
-    aria-label="Open Perch"
+    aria-label="Open Ledge"
   >
     {#if s.handle === "spark"}
       <span class="knob"><Icon name="spark" size={15} /></span>
@@ -107,7 +120,7 @@
     border-radius: 50%;
     background: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-weak);
-    animation: breathe 2.4s ease-in-out infinite;
+    animation: breathe 2.4s var(--ease) infinite;
   }
   /* Ring peaks at 4px so the dot + ring fit inside the handle (no clipping). */
   @keyframes breathe {
@@ -122,9 +135,38 @@
   /* The bar runs ALONG the docked edge: horizontal on top, vertical on the
      sides. Keyed off placement directly so it can't disagree with the window. */
   .bar {
+    position: relative;
+    overflow: hidden;
     border-radius: var(--radius-pill);
     background: var(--border-2);
-    transition: background var(--dur) var(--ease);
+    transition:
+      background var(--dur) var(--ease),
+      transform var(--dur-slow) var(--ease-spring);
+  }
+  /* Countdown fill for the hover-open delay. */
+  .bar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  .dock.left .bar::after,
+  .dock.right .bar::after {
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  .arming .bar::after {
+    transform: none;
+    transition: transform var(--arm-ms) linear;
+  }
+  .dock.top .handle:hover .bar {
+    transform: scaleY(1.4);
+  }
+  .dock.left .handle:hover .bar,
+  .dock.right .handle:hover .bar {
+    transform: scaleX(1.4);
   }
   .dock.top .bar {
     width: 42px;
@@ -137,6 +179,22 @@
   }
   .handle:hover .knob {
     border-color: var(--accent);
+  }
+  .knob,
+  .pulse {
+    transition:
+      border-color var(--dur) var(--ease),
+      transform var(--dur-slow) var(--ease-spring);
+  }
+  .handle:hover .knob,
+  .handle:hover .pulse {
+    transform: scale(1.12);
+  }
+  .arming .knob {
+    background: var(--accent-weak);
+    transition:
+      background var(--arm-ms) linear,
+      transform var(--dur-slow) var(--ease-spring);
   }
   .handle:hover .bar {
     background: var(--accent);

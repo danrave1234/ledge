@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Icon from "$lib/components/Icon.svelte";
+  import type { CardResolution } from "$lib/types";
   import {
     computerRunActions,
     type ComputerAction,
@@ -11,8 +13,22 @@
     actions?: ComputerAction[];
   }
 
-  let { data = {} }: { data?: CardData } = $props();
-  let status: "pending" | "running" | "completed" | "cancelled" = $state("pending");
+  let {
+    data = {},
+    resolved,
+    onresolve,
+  }: {
+    data?: CardData;
+    resolved?: CardResolution;
+    onresolve?: (r: CardResolution) => void;
+  } = $props();
+  // svelte-ignore state_referenced_locally
+  let status = $state(resolved?.status ?? "pending");
+
+  function settle(next: "completed" | "cancelled") {
+    status = next;
+    onresolve?.({ status: next, label: data.target?.title });
+  }
   let error = $state("");
 
   function label(action: ComputerAction): string {
@@ -29,7 +45,7 @@
     error = "";
     try {
       await computerRunActions(data.target, data.actions);
-      status = "completed";
+      settle("completed");
     } catch (e) {
       status = "pending";
       error = e instanceof Error ? e.message : String(e);
@@ -37,31 +53,36 @@
   }
 </script>
 
-<div class="card">
-  <div class="eyebrow">Computer action approval</div>
-  <strong>{data.target?.title || "Unknown window"}</strong>
-  <p>{data.summary || ""}</p>
-  <ol>
-    {#each data.actions || [] as action, i (i)}
-      <li>{label(action)}</li>
-    {/each}
-  </ol>
-  {#if error}<div class="error" role="alert">{error}</div>{/if}
+<div class="approval">
+  <div class="approval-eyebrow"><Icon name="stack" size={13} /> Run steps</div>
   {#if status === "completed"}
-    <div class="receipt" role="status">Approved actions completed.</div>
+    <div class="approval-receipt done" role="status">
+      <Icon name="check" size={14} /> Approved steps completed.
+    </div>
   {:else if status === "cancelled"}
-    <div class="receipt" role="status">Cancelled. No actions were run.</div>
+    <div class="approval-receipt" role="status">Cancelled — no steps were run.</div>
   {:else}
-    <div class="actions">
+    <strong>{data.target?.title || "Unknown window"}</strong>
+    {#if data.summary}<p>{data.summary}</p>{/if}
+    <ol class="approval-detail">
+      {#each data.actions || [] as action, i (i)}
+        <li>{label(action)}</li>
+      {/each}
+    </ol>
+    {#if error}<div class="approval-error" role="alert">{error}</div>{/if}
+    <div class="approval-actions">
       <button
         class="btn btn-sm btn-accent"
         onclick={run}
         disabled={status === "running" || !data.target || !data.actions?.length}
-        >{status === "running" ? "Running…" : "Run actions"}</button
       >
+        {#if status === "running"}<span class="spinner"></span> Running…{:else}Run {data
+            .actions?.length ?? 0}
+          {data.actions?.length === 1 ? "step" : "steps"}{/if}
+      </button>
       <button
         class="btn btn-sm"
-        onclick={() => (status = "cancelled")}
+        onclick={() => settle("cancelled")}
         disabled={status === "running"}>Cancel</button
       >
     </div>
@@ -69,47 +90,17 @@
 </div>
 
 <style>
-  .card {
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-  }
-  .eyebrow {
-    margin-bottom: 4px;
-    color: var(--text-2);
-    font-size: var(--fs-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
   p {
-    margin: 8px 0;
+    margin: 6px 0 0;
     font-size: var(--fs-sm);
+    color: var(--text-2);
   }
   ol {
     max-height: 180px;
     overflow: auto;
-    margin: 8px 0 10px;
-    padding: 9px 9px 9px 28px;
-    border-radius: var(--radius-sm);
-    background: var(--surface-2);
-    font-size: var(--fs-sm);
+    padding-left: 28px;
   }
   li {
     margin: 3px 0;
-    overflow-wrap: anywhere;
-  }
-  .actions {
-    display: flex;
-    gap: 8px;
-  }
-  .error {
-    margin-bottom: 8px;
-    color: var(--danger);
-    font-size: var(--fs-sm);
-  }
-  .receipt {
-    color: var(--text-2);
-    font-size: var(--fs-sm);
   }
 </style>

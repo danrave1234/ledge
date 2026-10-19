@@ -48,3 +48,21 @@ describe("model selection", () => {
     expect(s.modelByProvider[s.providerId]).toBe(s.model);
   });
 });
+
+describe("memory undo", () => {
+  it("restores a deleted memory at its old position", async () => {
+    const { addMemory, deleteMemory, restoreMemory } = await import("./settings");
+    settings.set({ ...DEFAULT_SETTINGS, memories: [] });
+    addMemory("one");
+    addMemory("two");
+    addMemory("three");
+    const before = get(settings).memories;
+    deleteMemory(before[1].id);
+    expect(get(settings).memories.map((m) => m.text)).toEqual(["one", "three"]);
+    restoreMemory(before[1], 1);
+    expect(get(settings).memories).toEqual(before);
+    // Restoring twice never duplicates.
+    restoreMemory(before[1], 1);
+    expect(get(settings).memories).toHaveLength(3);
+  });
+});

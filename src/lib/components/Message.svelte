@@ -1,8 +1,9 @@
 <script lang="ts">
-  import type { Msg } from "$lib/types";
+  import type { CardResolution, Msg } from "$lib/types";
   import { renderMd, renderStreamMd } from "$lib/md";
   import { openExternal } from "$lib/native";
-  import { openCanvas, reopenLogin, openImage } from "$lib/stores";
+  import { openCanvas, reopenLogin, openImage, resolveCard, ui } from "$lib/stores";
+  import { retry } from "$lib/controller";
   import { flyIn } from "$lib/motion";
   import { cardComponent, renderableCards } from "$lib/cards";
   import { tick } from "svelte";
@@ -192,7 +193,7 @@
   }
 </script>
 
-<div class="msg {msg.role}" in:fly={flyIn}>
+<div class="msg {msg.role}" in:fly={flyIn()}>
   {#if msg.role === "user"}
     <div class="bubble user">{msg.content}</div>
     {#if msg.attachment?.kind === "document"}
@@ -233,7 +234,11 @@
                    remote text (track titles, playlist names), and Svelte
                    templating escapes it. -->
               {@const Card = cardComponent(card.type)}
-              <Card data={card.data} />
+              <Card
+                data={card.data}
+                resolved={card.resolved}
+                onresolve={(r: CardResolution) => resolveCard(msg.id, i, r)}
+              />
             {/each}
           </div>
         {/if}
@@ -254,6 +259,14 @@
         {/if}
         {#if msg.action === "auth"}
           <button class="authbtn" onclick={reopenLogin}>Connect an account →</button>
+        {:else if msg.error}
+          <button
+            class="retrybtn"
+            onclick={() => retry(msg.id)}
+            disabled={$ui.generating}
+          >
+            <Icon name="refresh" size={13} /> Try again
+          </button>
         {/if}
       {/if}
     </div>
@@ -348,7 +361,7 @@
     color: var(--text);
   }
   .response-actions button.copied {
-    color: var(--success);
+    color: var(--ok);
   }
   .authbtn {
     display: block;
@@ -369,6 +382,31 @@
   .authbtn:hover {
     background: var(--accent);
     color: var(--accent-on);
+  }
+  .retrybtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 9px;
+    padding: 5px 11px;
+    border-radius: var(--radius-pill);
+    border: 1px solid currentColor;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background var(--dur) var(--ease),
+      opacity var(--dur) var(--ease);
+  }
+  .retrybtn:hover {
+    background: var(--danger-weak);
+  }
+  .retrybtn:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
   .tags {
     display: flex;
@@ -496,7 +534,7 @@
     border-radius: var(--radius-xs);
     background: var(--accent-weak);
     color: var(--accent-text);
-    font-size: 10px;
+    font-size: var(--fs-2xs);
     font-weight: 600;
     line-height: 1;
     text-decoration: none;
@@ -562,7 +600,7 @@
     border-radius: 50%;
     background: var(--accent-weak);
     color: var(--accent-text);
-    font-size: 10px;
+    font-size: var(--fs-2xs);
     font-weight: 600;
     flex-shrink: 0;
   }
@@ -582,11 +620,11 @@
     border-radius: 2px;
     margin-left: 1px;
     vertical-align: -2px;
-    animation: blink 1s steps(2) infinite;
+    animation: blink 1.1s var(--ease) infinite;
   }
   @keyframes blink {
     50% {
-      opacity: 0;
+      opacity: 0.15;
     }
   }
   .typing {

@@ -70,7 +70,7 @@ export interface ExtractedDocument {
   text: string;
 }
 
-/** Validate and normalize a document locally. Raw bytes never leave Perch. */
+/** Validate and normalize a document locally. Raw bytes never leave Ledge. */
 export async function extractDocument(
   name: string,
   bytes: Uint8Array,
@@ -279,7 +279,7 @@ export type ComputerAction =
   | { kind: "key"; key: string }
   | { kind: "scroll"; amount: number };
 
-/** The last external window focused before the user opened Perch. */
+/** The last external window focused before the user opened Ledge. */
 export async function computerTarget(): Promise<ComputerTarget | null> {
   return tryCmd<ComputerTarget | null>("computer_target", null);
 }
@@ -318,7 +318,7 @@ export interface LaunchableApp {
   kind: "shortcut" | "system";
 }
 
-/** Installed apps Perch may offer to open: Start Menu shortcuts plus a fixed
+/** Installed apps Ledge may offer to open: Start Menu shortcuts plus a fixed
  *  set of built-in Windows apps. Empty in the browser preview. */
 export async function listApps(): Promise<LaunchableApp[]> {
   return tryCmd<LaunchableApp[]>("app_list", []);
@@ -353,7 +353,7 @@ export async function openFoundPath(
 }
 
 /** Capture + OCR a screen so text-only providers can use it too.
- *  `display` is the same monitor index the widget docks to, so what Perch
+ *  `display` is the same monitor index the widget docks to, so what Ledge
  *  captures is always the screen the user sees it on. */
 export async function captureContext(
   mode: CaptureMode,

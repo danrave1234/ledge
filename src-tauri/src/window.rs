@@ -166,7 +166,7 @@ pub fn quit_app(app: tauri::AppHandle) {
 }
 
 /// Clear the WebView2 cache (HTTP cache, cookies, transient storage) to keep
-/// Perch light. Durable memory (history, personas, settings) lives in the
+/// Ledge light. Durable memory (history, personas, settings) lives in the
 /// app-data store, not here, so it is preserved across a cache clear.
 #[tauri::command]
 pub fn clear_cache(window: WebviewWindow) -> Result<(), String> {
@@ -223,9 +223,9 @@ fn is_fullscreen_rect(
     window: ScreenRect,
     monitor: ScreenRect,
     class_name: &str,
-    is_perch: bool,
+    is_ledge: bool,
 ) -> bool {
-    if is_perch || matches!(class_name, "Progman" | "WorkerW" | "Shell_TrayWnd") {
+    if is_ledge || matches!(class_name, "Progman" | "WorkerW" | "Shell_TrayWnd") {
         return false;
     }
 
@@ -300,7 +300,7 @@ fn foreground_is_fullscreen(_self_hwnd: Option<()>) -> bool {
 ///
 /// The widget is always-on-top, which is right on the desktop and wrong in a
 /// game — it sits over the HUD and takes clicks meant for the game. With game
-/// mode on, Perch hides itself whenever a fullscreen app has focus (borderless
+/// mode on, Ledge hides itself whenever a fullscreen app has focus (borderless
 /// or exclusive, both are covered) and reappears the moment you leave it.
 ///
 /// The window is HIDDEN rather than moved or made click-through, so it can't be
@@ -413,8 +413,8 @@ mod tests {
     }
 
     #[test]
-    fn perch_and_shell_windows_are_excluded() {
-        assert!(!is_fullscreen_rect(PRIMARY, PRIMARY, "Perch", true));
+    fn ledge_and_shell_windows_are_excluded() {
+        assert!(!is_fullscreen_rect(PRIMARY, PRIMARY, "Ledge", true));
         for class_name in ["Progman", "WorkerW", "Shell_TrayWnd"] {
             assert!(!is_fullscreen_rect(PRIMARY, PRIMARY, class_name, false));
         }

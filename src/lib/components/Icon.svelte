@@ -39,6 +39,13 @@
       '<ellipse cx="12" cy="5.5" rx="7.2" ry="2.8"/><path d="M4.8 5.5v6c0 1.55 3.2 2.8 7.2 2.8s7.2-1.25 7.2-2.8v-6"/><path d="M4.8 11.5v6c0 1.55 3.2 2.8 7.2 2.8s7.2-1.25 7.2-2.8v-6"/>',
     download:
       '<path d="M12 3.5v11"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4.5 19.5h15"/>',
+    // The Ledge brand mark: an "L" ledge with a spark perched on it.
+    ledge:
+      '<path d="M6.5 5v11.5H18.5" stroke-width="2.4"/><path d="M13.6 4.6Q14 8.6 18 9Q14 9.4 13.6 13.4Q13.2 9.4 9.2 9Q13.2 8.6 13.6 4.6z" fill="currentColor" stroke="none"/>',
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6v.2"/>',
+    gauge:
+      '<path d="M4.5 16.5a8 8 0 1 1 15 0"/><path d="M12 13l3.5-4"/><circle cx="12" cy="13.5" r="1.2"/>',
     sparkles: '<path d="M12 3l1.7 4.8L18 9.5l-4.3 1.7L12 16l-1.7-4.8L6 9.5l4.3-1.7z"/>',
     "arrow-right": '<path d="M5 12h14"/><path d="M12 5l7 7-7 7"/>',
     power: '<path d="M12 3.5v8"/><path d="M7.3 6.7a7 7 0 1 0 9.4 0"/>',

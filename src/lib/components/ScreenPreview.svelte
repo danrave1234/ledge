@@ -1,15 +1,29 @@
 <script lang="ts">
   import Icon from "$lib/components/Icon.svelte";
 
-  let { image, onredact, onremove, onrecapture } = $props<{
+  let {
+    image,
+    redacted = false,
+    onredact,
+    onreset,
+    onremove,
+    onrecapture,
+  }: {
     image: string;
+    /** True once the user has blacked something out of this capture. */
+    redacted?: boolean;
     onredact: (image: string) => void;
+    onreset: () => void;
     onremove: () => void;
     onrecapture: () => void;
-  }>();
+  } = $props();
 
   let canvas: HTMLCanvasElement | undefined = $state();
   let start: { x: number; y: number } | null = null;
+  let box = $state<{ left: number; top: number; width: number; height: number } | null>(
+    null,
+  );
+  // Painted onto the image itself, so this is pixel data rather than UI chrome.
   const REDACTION_COLOR = "#000";
 
   function paint() {
@@ -37,13 +51,34 @@
     };
   }
 
+  /** The drag rectangle in CSS pixels, drawn live so you can see what will be hidden. */
+  function cssBox(e: PointerEvent) {
+    if (!canvas || !start) return null;
+    const rect = canvas.getBoundingClientRect();
+    const sx = (start.x / canvas.width) * rect.width;
+    const sy = (start.y / canvas.height) * rect.height;
+    const ex = e.clientX - rect.left;
+    const ey = e.clientY - rect.top;
+    return {
+      left: Math.min(sx, ex),
+      top: Math.min(sy, ey),
+      width: Math.abs(ex - sx),
+      height: Math.abs(ey - sy),
+    };
+  }
+
   function begin(e: PointerEvent) {
     if (!canvas) return;
     canvas.setPointerCapture(e.pointerId);
     start = point(e);
   }
 
+  function move(e: PointerEvent) {
+    if (start) box = cssBox(e);
+  }
+
   function finish(e: PointerEvent) {
+    box = null;
     if (!canvas || !start) return;
     const end = point(e);
     const x = Math.min(start.x, end.x);
@@ -62,24 +97,51 @@
 
 <section class="preview" aria-label="Screen capture preview">
   <div class="preview-head">
-    <span>Screen to send</span>
-    <span class="hint">Drag to redact</span>
-    <button class="active" aria-pressed="true">Redact</button>
-    <button class="icon-btn" onclick={onrecapture} aria-label="Recapture screen">
-      <Icon name="refresh" size={13} />
+    <Icon name="screen" size={13} />
+    <span class="title">Review before sending</span>
+    <span class="hint">Drag over anything private to black it out</span>
+    {#if redacted}
+      <button class="btn btn-sm" onclick={onreset} title="Undo all redactions">
+        Undo redactions
+      </button>
+    {/if}
+    <button
+      class="icon-btn"
+      onclick={onrecapture}
+      aria-label="Recapture screen"
+      title="Recapture"
+    >
+      <Icon name="refresh" size={14} />
     </button>
-    <button class="icon-btn" onclick={onremove} aria-label="Remove screen capture">
-      <Icon name="x" size={13} />
+    <button
+      class="icon-btn"
+      onclick={onremove}
+      aria-label="Remove screen capture"
+      title="Don't send the screen"
+    >
+      <Icon name="x" size={14} />
     </button>
   </div>
-  <canvas
-    bind:this={canvas}
-    onpointerdown={begin}
-    onpointerup={finish}
-    onpointercancel={() => (start = null)}
-    tabindex="0"
-    aria-label="Exact screen image that will be sent. Drag to hide sensitive content."
-  ></canvas>
+  <div class="stage">
+    <canvas
+      bind:this={canvas}
+      onpointerdown={begin}
+      onpointermove={move}
+      onpointerup={finish}
+      onpointercancel={() => {
+        start = null;
+        box = null;
+      }}
+      tabindex="0"
+      aria-label="Exact screen image that will be sent. Drag to hide sensitive content."
+    ></canvas>
+    {#if box}
+      <div
+        class="box"
+        style="left:{box.left}px;top:{box.top}px;width:{box.width}px;height:{box.height}px"
+      ></div>
+    {/if}
+  </div>
 </section>
 
 <style>
@@ -94,16 +156,23 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 7px;
+    padding: 4px 4px 4px 9px;
     color: var(--text-2);
     font-size: var(--fs-xs);
+  }
+  .title {
+    font-weight: 600;
+    color: var(--text);
   }
   .hint {
     margin-right: auto;
     color: var(--text-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .preview-head button.active {
-    color: var(--accent);
+  .stage {
+    position: relative;
   }
   canvas {
     display: block;
@@ -113,5 +182,11 @@
     cursor: crosshair;
     touch-action: none;
     background: var(--surface-3);
+  }
+  .box {
+    position: absolute;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--text) 70%, transparent);
+    outline: 1px dashed var(--accent);
   }
 </style>

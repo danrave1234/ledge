@@ -13,7 +13,7 @@ use std::time::Duration;
 /// slow-but-alive generation.
 static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
-pub const USER_AGENT: &str = concat!("Perch/", env!("CARGO_PKG_VERSION"));
+pub const USER_AGENT: &str = concat!("Ledge/", env!("CARGO_PKG_VERSION"));
 
 pub fn client() -> &'static reqwest::Client {
     CLIENT.get_or_init(|| {

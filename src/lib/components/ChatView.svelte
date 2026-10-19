@@ -3,10 +3,16 @@
   import Composer from "$lib/components/Composer.svelte";
   import NowPlayingBar from "$lib/plugins/music/NowPlayingBar.svelte";
   import Icon from "$lib/components/Icon.svelte";
-  import { messages, ui, settings, activeId } from "$lib/stores";
+  import {
+    messages,
+    ui,
+    settings,
+    activeId,
+    requestComposer,
+    type ComposerRequest,
+  } from "$lib/stores";
   import { pluginActive } from "$lib/plugins";
-  import { send } from "$lib/controller";
-  import { DUR_SLOW, EASE, fadeOverlay } from "$lib/motion";
+  import { stagger, fadeOverlay } from "$lib/motion";
   import { fade, fly } from "svelte/transition";
   import { tick } from "svelte";
 
@@ -46,13 +52,65 @@
     settleToBottom();
   });
 
-  let suggestions = $derived([
-    ...(pluginActive($settings, "job-analyzer")
-      ? ["Is this job applicable to me? Should I apply?"]
-      : []),
-    "Summarize what's on my screen",
-    "Draft a reply to this email",
-  ]);
+  interface Suggestion extends ComposerRequest {
+    icon: string;
+    /** Shown on the chip when it differs from the text placed in the box. */
+    label?: string;
+  }
+
+  /** Only suggest what will actually work right now: a screen suggestion
+      without the Screen plugin used to send with no screen at all, and the
+      model then answered "I can't see your screen" to our own suggestion.
+      Each one goes through the composer, so screen/web ones switch the
+      matching toggle on and get the same capture + review flow as typing. */
+  let suggestions = $derived.by(() => {
+    const out: Suggestion[] = [];
+    const screen = pluginActive($settings, "screen-context");
+    if (screen && pluginActive($settings, "job-analyzer"))
+      out.push({
+        icon: "screen",
+        text: "Is this job a good fit for me? Should I apply?",
+        screen: true,
+        send: true,
+      });
+    if (screen)
+      out.push({
+        icon: "screen",
+        text: "Summarize what's on my screen",
+        screen: true,
+        send: true,
+      });
+    if (pluginActive($settings, "web-search"))
+      out.push({
+        icon: "web",
+        text: "What's new in tech this week?",
+        web: true,
+        send: true,
+      });
+    out.push({
+      icon: "edit",
+      text: "Draft a polite follow-up email",
+      send: true,
+    });
+    out.push({
+      icon: "spark",
+      label: "Explain something simply",
+      text: "Explain this simply: ",
+      send: false,
+    });
+    return out.slice(0, 4);
+  });
+
+  const greeting = (() => {
+    const h = new Date().getHours();
+    return h < 5
+      ? "Up late?"
+      : h < 12
+        ? "Good morning"
+        : h < 18
+          ? "Good afternoon"
+          : "Good evening";
+  })();
 
   let prevLen = 0;
   $effect(() => {
@@ -81,16 +139,19 @@
   aria-label="Conversation"
 >
   {#if list.length === 0}
-    <div class="empty" in:fade={fadeOverlay}>
-      <div class="orb"><Icon name="spark" size={22} /></div>
-      <p class="hi">How can I help?</p>
+    <div class="empty" in:fade={fadeOverlay()}>
+      <div class="orb"><Icon name="ledge" size={24} /></div>
+      <p class="hi">{greeting}. How can I help?</p>
       <div class="suggs">
-        {#each suggestions as sg, i (sg)}
+        {#each suggestions as sg, i (sg.text)}
           <button
             class="sugg"
-            in:fly={{ y: 8, duration: DUR_SLOW, delay: 50 * i, easing: EASE }}
-            onclick={() => send(sg)}>{sg}</button
+            in:fly={stagger(i + 1)}
+            onclick={() => requestComposer({ ...sg })}
           >
+            <Icon name={sg.icon} size={14} />
+            <span>{sg.label ?? sg.text}</span>
+          </button>
         {/each}
       </div>
     </div>
@@ -104,7 +165,7 @@
     <!-- A tool round produces no tokens, so without this the panel looks
          frozen for the seconds a search or capture takes. -->
     {#if activity}
-      <div class="activity" role="status" in:fade={fadeOverlay}>
+      <div class="activity" role="status" in:fade={fadeOverlay()}>
         <span class="dot"></span>{activity}…
       </div>
     {/if}
@@ -172,6 +233,13 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 10px;
+    animation: orb-in var(--dur-enter) var(--ease-spring) both;
+  }
+  @keyframes orb-in {
+    from {
+      opacity: 0;
+      transform: scale(0.8) rotate(-8deg);
+    }
   }
   .hi {
     font-size: var(--fs-xl);
@@ -179,13 +247,16 @@
     margin: 0 0 14px;
   }
   .suggs {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 7px;
     width: 100%;
-    max-width: 300px;
+    max-width: 440px;
   }
   .sugg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     padding: 9px 12px;
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
@@ -197,10 +268,23 @@
     text-align: left;
     transition:
       color var(--dur) var(--ease),
-      border-color var(--dur) var(--ease);
+      border-color var(--dur) var(--ease),
+      transform var(--dur) var(--ease);
+  }
+  .sugg :global(svg) {
+    flex-shrink: 0;
+    color: var(--text-3);
+    transition: color var(--dur) var(--ease);
   }
   .sugg:hover {
     color: var(--text);
     border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  .sugg:hover :global(svg) {
+    color: var(--accent);
+  }
+  .sugg:active {
+    transform: scale(0.98);
   }
 </style>

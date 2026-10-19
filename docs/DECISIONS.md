@@ -1,6 +1,6 @@
 # Decisions
 
-Why Perch is built this way. Each entry is a decision that is expensive to reverse
+Why Ledge is built this way. Each entry is a decision that is expensive to reverse
 or easy to undo by accident.
 
 ## Tauri, not Electron
@@ -186,11 +186,31 @@ widget sitting over a game's HUD, eating clicks meant for the game, is exactly
 what people turn game mode ON to prevent. It now means what it means everywhere
 else — get out of the way.
 
-While enabled, a watcher polls the foreground window and hides Perch whenever any
+While enabled, a watcher polls the foreground window and hides Ledge whenever any
 fullscreen app has focus, restoring it when you leave. This policy is global: a
-focused fullscreen app on any monitor hides the entire Perch window, even when
-Perch is docked on another display. Detection is **geometric** (does the focused
+focused fullscreen app on any monitor hides the entire Ledge window, even when
+Ledge is docked on another display. Detection is **geometric** (does the focused
 window cover its whole monitor?) rather than a list of game executables: nothing
 to maintain, and it catches games, video players, launchers, and emulators. The
 window is hidden outright rather than moved or made click-through, so it can
 neither be seen nor intercept input. On by default.
+
+## Renamed Perch → Ledge, but persisted identifiers keep `perch`
+
+The product was renamed from Perch to Ledge (0.2.0). Everything a person sees —
+product name, window and tray text, installer, executable (`ledge.exe`), logo,
+release names — says Ledge. These deliberately still say `perch`, and must not be
+"finished off" by a later rename:
+
+- the bundle identifier `com.perch.assistant` — it names the app-data folder that
+  holds history/settings and the Windows Credential Manager service that holds
+  API keys and the Spotify token; changing it orphans every existing user's data;
+- store keys (`perch.settings`, `perch.personas`, `perch.conversations`,
+  `perch.plugin.<id>`) and internal event names (`perch://…`);
+- the updater signing key filenames (`perch-updater.key*`) — the public key in
+  `tauri.conf.json` must keep matching the key installed builds verify against.
+
+The logo source is `brand/ledge-icon.svg` (app icon) and `brand/ledge-mark.svg`
+(single-colour mark). Regenerate platform icons with
+`pnpm tauri icon brand/ledge-icon.svg`, then delete the generated `android/` and
+`ios/` folders — Ledge is Windows-only.

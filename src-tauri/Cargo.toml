@@ -1,17 +1,17 @@
 [package]
-name = "perch"
-version = "0.1.3"
-description = "Perch — an edge-docked AI assistant widget"
+name = "ledge"
+version = "0.2.0"
+description = "Ledge — an edge-docked AI assistant widget"
 authors = ["Danrave"]
 edition = "2024"
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
-name = "perch_lib"
+name = "ledge_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-# Perch ships as a small, always-resident widget: optimize the release build for
+# Ledge ships as a small, always-resident widget: optimize the release build for
 # size and startup, not for compile time.
 [profile.release]
 opt-level = "s"    # size over raw speed; the hot paths are I/O bound

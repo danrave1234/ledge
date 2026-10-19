@@ -162,17 +162,15 @@ fn parse_libraryfolders_vdf(content: &str) -> Vec<PathBuf> {
         }
 
         // Look for `"path"    "D:\Some\Path"`
-        if trimmed.starts_with("\"path\"") {
+        if let Some(after) = trimmed.strip_prefix("\"path\"") {
             // Extract the value after "path"
-            let rest = &trimmed[6..].trim_start();
+            let rest = &after.trim_start();
             if rest.starts_with('"') {
                 let end = rest.rfind('"');
                 if let Some(end) = end {
                     let path_str = &rest[1..end];
                     // Unescape VDF-style escapes
-                    let path_str = path_str
-                        .replace("\\\\", "\\")
-                        .replace("\\/", "/");
+                    let path_str = path_str.replace("\\\\", "\\").replace("\\/", "/");
                     let p = PathBuf::from(&path_str);
                     if p.is_dir() {
                         paths.push(p);
@@ -292,14 +290,14 @@ fn resolve_alias(query: &str) -> Option<PathBuf> {
 fn search_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
 
-    if let Some(profile) = user_profile() {
-        if profile.is_dir() {
-            roots.push(profile.clone());
-            for sub in PROFILE_FOLDERS {
-                let p = profile.join(sub);
-                if p.is_dir() && !roots.iter().any(|r| r == &p) {
-                    roots.push(p);
-                }
+    if let Some(profile) = user_profile()
+        && profile.is_dir()
+    {
+        roots.push(profile.clone());
+        for sub in PROFILE_FOLDERS {
+            let p = profile.join(sub);
+            if p.is_dir() && !roots.iter().any(|r| r == &p) {
+                roots.push(p);
             }
         }
     }
@@ -414,7 +412,11 @@ fn score_match(name: &str, query: &str) -> u32 {
     let query_words: Vec<&str> = lower_query.split_whitespace().collect();
     let matched = name_words
         .iter()
-        .filter(|w| query_words.iter().any(|qw| w.contains(qw) || qw.contains(*w)))
+        .filter(|w| {
+            query_words
+                .iter()
+                .any(|qw| w.contains(qw) || qw.contains(*w))
+        })
         .count();
     if matched > 0 {
         return (matched as u32) * 10;
@@ -432,32 +434,30 @@ pub fn search_paths(query: &str) -> Vec<FoundPath> {
     // Check Steam aliases first
     let q_lower = query.to_lowercase();
     for (alias, target) in STEAM_ALIASES {
-        if q_lower == *alias {
-            if let Some(found) = resolve_steam_alias(target) {
-                return vec![found];
-            }
+        if q_lower == *alias
+            && let Some(found) = resolve_steam_alias(target)
+        {
+            return vec![found];
         }
     }
 
     // First check known-folder aliases so "downloads" is instant and exact.
-    if let Some(alias_path) = resolve_alias(query) {
-        if alias_path.exists() {
-            let name = if alias_path
-                == user_profile().unwrap_or_default()
-            {
-                "Home".to_string()
-            } else {
-                alias_path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| query.to_string())
-            };
-            return vec![FoundPath {
-                name,
-                path: alias_path.to_string_lossy().into_owned(),
-                kind: PathKind::Folder,
-            }];
-        }
+    if let Some(alias_path) = resolve_alias(query)
+        && alias_path.exists()
+    {
+        let name = if alias_path == user_profile().unwrap_or_default() {
+            "Home".to_string()
+        } else {
+            alias_path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| query.to_string())
+        };
+        return vec![FoundPath {
+            name,
+            path: alias_path.to_string_lossy().into_owned(),
+            kind: PathKind::Folder,
+        }];
     }
 
     let roots = search_roots();
@@ -469,14 +469,14 @@ pub fn search_paths(query: &str) -> Vec<FoundPath> {
         if results.len() >= MAX_RESULTS {
             break;
         }
-        if let Some(name) = game.file_name().and_then(|n| n.to_str()) {
-            if score_match(name, query) > 0 {
-                results.push(FoundPath {
-                    name: name.to_string(),
-                    path: game.to_string_lossy().into_owned(),
-                    kind: PathKind::Folder,
-                });
-            }
+        if let Some(name) = game.file_name().and_then(|n| n.to_str())
+            && score_match(name, query) > 0
+        {
+            results.push(FoundPath {
+                name: name.to_string(),
+                path: game.to_string_lossy().into_owned(),
+                kind: PathKind::Folder,
+            });
         }
     }
 
@@ -485,14 +485,14 @@ pub fn search_paths(query: &str) -> Vec<FoundPath> {
             continue;
         }
         // Also match the root folder name itself (e.g. searching "Documents").
-        if let Some(name) = root.file_name().and_then(|n| n.to_str()) {
-            if score_match(name, query) > 0 {
-                results.push(FoundPath {
-                    name: name.to_string(),
-                    path: root.to_string_lossy().into_owned(),
-                    kind: PathKind::Folder,
-                });
-            }
+        if let Some(name) = root.file_name().and_then(|n| n.to_str())
+            && score_match(name, query) > 0
+        {
+            results.push(FoundPath {
+                name: name.to_string(),
+                path: root.to_string_lossy().into_owned(),
+                kind: PathKind::Folder,
+            });
         }
         collect_matches(root, 0, query, &mut results);
     }
@@ -585,7 +585,11 @@ mod tests {
     #[test]
     fn alias_maps_known_names() {
         assert!(ALIASES.iter().any(|(a, _)| *a == "downloads"));
-        assert!(ALIASES.iter().any(|(a, s)| *a == "my documents" && *s == "Documents"));
+        assert!(
+            ALIASES
+                .iter()
+                .any(|(a, s)| *a == "my documents" && *s == "Documents")
+        );
         assert_eq!(resolve_alias("nonexistent-folder-xyz"), None);
     }
 
@@ -631,8 +635,16 @@ mod tests {
 
     #[test]
     fn steam_aliases_exist() {
-        assert!(STEAM_ALIASES.iter().any(|(a, t)| *a == "steam" && *t == "steam_root"));
-        assert!(STEAM_ALIASES.iter().any(|(a, t)| *a == "steam games" && *t == "steam_common"));
+        assert!(
+            STEAM_ALIASES
+                .iter()
+                .any(|(a, t)| *a == "steam" && *t == "steam_root")
+        );
+        assert!(
+            STEAM_ALIASES
+                .iter()
+                .any(|(a, t)| *a == "steam games" && *t == "steam_common")
+        );
     }
 
     #[test]

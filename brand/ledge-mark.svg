@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+  <!-- Single-colour Ledge mark for small UI and monochrome use. -->
+  <path d="M6.5 5v11.5H18.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M13.6 4.6Q14 8.6 18 9Q14 9.4 13.6 13.4Q13.2 9.4 9.2 9Q13.2 8.6 13.6 4.6z" fill="currentColor"/>
+</svg>

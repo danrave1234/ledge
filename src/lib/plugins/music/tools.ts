@@ -1,4 +1,4 @@
-import type { PerchTool } from "../../tools";
+import type { LedgeTool } from "../../tools";
 import type { Settings, TurnConsent } from "../../types";
 import { mediaSessions, mediaControl, type MediaSession } from "../../native";
 import { pluginActive } from "../../plugins";
@@ -10,7 +10,7 @@ import { pluginActive } from "../../plugins";
 
      - READING what is playing is not an intrusion. It needs the plugin active
        and nothing else.
-     - ACTING on a player is the first thing Perch does that changes the world
+     - ACTING on a player is the first thing Ledge does that changes the world
        outside its own window. It needs the plugin active AND the Music consent
        toggle AND a one-time confirmation, and it always leaves a visible
        receipt (the card) so the model cannot claim a play it did not perform.
@@ -60,7 +60,7 @@ function str(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-const nowPlayingTool: PerchTool = {
+const nowPlayingTool: LedgeTool = {
   pluginId: "music",
   runningLabel: "Checking what's playing",
   capability: "see what the user is currently listening to",
@@ -93,7 +93,7 @@ const nowPlayingTool: PerchTool = {
   },
 };
 
-const controlTool: PerchTool = {
+const controlTool: LedgeTool = {
   pluginId: "music",
   runningLabel: "Controlling playback",
   capability: "play, pause, skip, and seek the music already loaded in the user's player",
@@ -155,4 +155,4 @@ const controlTool: PerchTool = {
   },
 };
 
-export const musicTools: PerchTool[] = [nowPlayingTool, controlTool];
+export const musicTools: LedgeTool[] = [nowPlayingTool, controlTool];

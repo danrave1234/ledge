@@ -8,8 +8,12 @@
     upsertPersona,
     deletePersona,
     uid,
+    toastUndo,
+    toast,
   } from "$lib/stores";
   import type { Persona } from "$lib/types";
+  import { stagger, flyIn } from "$lib/motion";
+  import { fly } from "svelte/transition";
 
   let s = $derived($settings);
   let custom = $derived($customPersonas);
@@ -23,18 +27,33 @@
   function edit(p: Persona) {
     editing = { ...p };
   }
+  let isNew = $derived(!!editing && !custom.some((p) => p.id === editing?.id));
+
   function save() {
-    if (!editing) return;
+    if (!editing || !editing.prompt.trim()) return;
     if (!editing.name.trim()) editing.name = "Untitled persona";
     upsertPersona({ ...editing, builtin: false });
     updateSettings({ personaId: editing.id });
+    toast(`${isNew ? "Created" : "Saved"} “${editing.name}” — now active`, {
+      tone: "ok",
+    });
     editing = null;
+  }
+
+  function remove(p: Persona) {
+    const wasActive = s.personaId === p.id;
+    deletePersona(p.id);
+    toastUndo(`Deleted “${p.name}”`, () => {
+      upsertPersona(p);
+      if (wasActive) updateSettings({ personaId: p.id });
+    });
   }
 </script>
 
 <div class="scroll">
   {#if editing}
-    <div class="editor">
+    <div class="editor" in:fly={flyIn()}>
+      <h4>{isNew ? "New persona" : "Edit persona"}</h4>
       <label for="p-name">Name</label>
       <input
         id="p-name"
@@ -50,18 +69,25 @@
         bind:value={editing.prompt}
         placeholder="Describe how the assistant should talk and behave. Paste your ChatGPT custom instructions here to match your usual voice."
       ></textarea>
+      <p class="hint">Saving makes this persona active. You can switch any time.</p>
       <div class="actions">
         <button class="btn" onclick={() => (editing = null)}>Cancel</button>
-        <button class="btn btn-accent" onclick={save}>Save persona</button>
+        <button class="btn btn-accent" onclick={save} disabled={!editing.prompt.trim()}>
+          {isNew ? "Create persona" : "Save changes"}
+        </button>
       </div>
     </div>
   {:else}
     <button class="add" onclick={startNew}>
       <Icon name="plus" size={15} /> New persona
     </button>
-    {#each all as p (p.id)}
-      <div class="row" class:sel={s.personaId === p.id}>
-        <button class="main" onclick={() => updateSettings({ personaId: p.id })}>
+    {#each all as p, i (p.id)}
+      <div class="row" class:sel={s.personaId === p.id} in:fly={stagger(i, 30)}>
+        <button
+          class="main"
+          aria-pressed={s.personaId === p.id}
+          onclick={() => updateSettings({ personaId: p.id })}
+        >
           <span class="name">
             {p.name}
             {#if s.personaId === p.id}<em>· active</em>{/if}
@@ -69,13 +95,19 @@
           <span class="prompt">{p.prompt}</span>
         </button>
         {#if !p.builtin}
-          <button class="icon-btn" aria-label="Edit" onclick={() => edit(p)}>
+          <button
+            class="icon-btn"
+            aria-label="Edit {p.name}"
+            title="Edit"
+            onclick={() => edit(p)}
+          >
             <Icon name="edit" size={15} />
           </button>
           <button
-            class="icon-btn"
-            aria-label="Delete"
-            onclick={() => deletePersona(p.id)}
+            class="icon-btn danger"
+            aria-label="Delete {p.name}"
+            title="Delete"
+            onclick={() => remove(p)}
           >
             <Icon name="trash" size={15} />
           </button>
@@ -168,6 +200,16 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+  .editor h4 {
+    margin: 0 0 4px;
+    font-size: var(--fs-xl);
+    font-weight: 600;
+  }
+  .hint {
+    margin: 4px 0 0;
+    font-size: var(--fs-xs);
+    color: var(--text-3);
   }
   .editor label {
     font-size: var(--fs-sm);

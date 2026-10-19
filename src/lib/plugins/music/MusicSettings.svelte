@@ -97,7 +97,7 @@
       <strong>Spotify</strong>
       <span class="hint">
         {#if connected}
-          Connected. Perch can search your library and start playback.
+          Connected. Ledge can search your library and start playback.
         {:else if hasShippedSpotifyApp}
           Sign in with your own Spotify account. Your connection stays on this PC.
         {:else}
@@ -177,9 +177,9 @@
       <strong>YouTube Music</strong>
       <span class="hint">
         {#if ytSaved}
-          Key saved. Perch can find a specific track and open it.
+          Key saved. Ledge can find a specific track and open it.
         {:else}
-          No sign-in here: Perch uses the account already open in your browser. A key only
+          No sign-in here: Ledge uses the account already open in your browser. A key only
           improves exact-track matching.
         {/if}
       </span>
@@ -226,7 +226,7 @@
     </p>
     <p class="note">
       YouTube has no official playback API, so tracks open in your browser and may need
-      one click to start. Perch checks with Windows whether playback actually began and
+      one click to start. Ledge checks with Windows whether playback actually began and
       will say so if it didn't.
     </p>
   {/if}

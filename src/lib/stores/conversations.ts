@@ -1,5 +1,5 @@
 import { writable, get } from "svelte/store";
-import type { Msg, Conversation } from "../types";
+import type { Msg, Conversation, CardResolution } from "../types";
 import { truncate } from "../format";
 import { uid } from "./persistence";
 import { deleteMessageAssets } from "../assets";
@@ -69,6 +69,57 @@ export function openConversation(id: string) {
   if (!conv) return;
   messages.set([...conv.messages]);
   activeId.set(id);
+}
+
+/** Take a conversation out of the list WITHOUT deleting its stored images, so
+ *  the removal can be undone. Pair with `restoreConversation` (undo) or
+ *  `purgeConversationAssets` (commit). Returns what was removed. */
+export function removeConversation(id: string): Conversation | undefined {
+  const removed = get(conversations).find((c) => c.id === id);
+  if (!removed) return undefined;
+  conversations.update((list) => list.filter((c) => c.id !== id));
+  if (get(activeId) === id) newChat();
+  return removed;
+}
+
+/** Put a removed conversation back where it sorts (newest first). */
+export function restoreConversation(conversation: Conversation) {
+  conversations.update((list) =>
+    list.some((c) => c.id === conversation.id)
+      ? list
+      : [...list, conversation].sort((a, b) => b.updatedAt - a.updatedAt),
+  );
+}
+
+/** Finalise a removal: delete the conversation's stored images. */
+export function purgeConversationAssets(conversation: Conversation) {
+  deleteMessageAssets(conversation.messages);
+}
+
+/** Record how an approval card on a message was resolved, and persist it. */
+export function resolveCard(msgId: string, index: number, resolution: CardResolution) {
+  messages.update((list) =>
+    list.map((m) =>
+      m.id === msgId && m.cards?.[index]
+        ? {
+            ...m,
+            cards: m.cards.map((c, i) =>
+              i === index ? { ...c, resolved: resolution } : c,
+            ),
+          }
+        : m,
+    ),
+  );
+  saveActive();
+}
+
+/** Drop a message and everything after it (used by Retry). */
+export function truncateFrom(msgId: string) {
+  messages.update((list) => {
+    const at = list.findIndex((m) => m.id === msgId);
+    return at < 0 ? list : list.slice(0, at);
+  });
+  saveActive();
 }
 
 export function deleteConversation(id: string) {

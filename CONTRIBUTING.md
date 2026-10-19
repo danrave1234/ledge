@@ -1,6 +1,6 @@
 # Contributing
 
-Perch targets Windows 10 version 1607 or newer with the WebView2 Runtime. Use
+Ledge targets Windows 10 version 1607 or newer with the WebView2 Runtime. Use
 Node 22.14+, pnpm 11, and stable Rust.
 
 1. Install dependencies with `pnpm install`.

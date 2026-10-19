@@ -24,7 +24,7 @@ use tauri_plugin_autostart::MacosLauncher;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        // Must be registered FIRST. Only one Perch may run: a second launch
+        // Must be registered FIRST. Only one Ledge may run: a second launch
         // (autostart + a manual start, say) would otherwise dock a second
         // handle on the same edge. Instead, focus the existing widget.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -90,15 +90,15 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 computer_control::track_external_focus(&window);
             }
-            let open_i = MenuItemBuilder::with_id("open", "Open Perch").build(app)?;
+            let open_i = MenuItemBuilder::with_id("open", "Open Ledge").build(app)?;
             let settings_i = MenuItemBuilder::with_id("settings", "Settings").build(app)?;
-            let quit_i = MenuItemBuilder::with_id("quit", "Quit Perch").build(app)?;
+            let quit_i = MenuItemBuilder::with_id("quit", "Quit Ledge").build(app)?;
             let menu = MenuBuilder::new(app)
                 .items(&[&open_i, &settings_i, &quit_i])
                 .build()?;
 
             let mut tray = TrayIconBuilder::with_id("main")
-                .tooltip("Perch")
+                .tooltip("Ledge")
                 .menu(&menu);
             if let Some(icon) = app.default_window_icon() {
                 tray = tray.icon(icon.clone());

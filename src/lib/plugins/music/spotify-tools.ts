@@ -1,4 +1,4 @@
-import type { PerchTool } from "../../tools";
+import type { LedgeTool } from "../../tools";
 import type { Settings, TurnConsent } from "../../types";
 import { pluginActive } from "../../plugins";
 import { spotifyConnected } from "../../native";
@@ -11,7 +11,7 @@ import type { MusicItem } from "./spotify";
 
    These are gated exactly like `music_control` — plugin active, Music toggle
    on, one-time confirmation given — plus a connected Spotify account. They
-   start audio on the user's machine, which is the strongest action Perch takes.
+   start audio on the user's machine, which is the strongest action Ledge takes.
    ========================================================================== */
 
 /** Set by the auth refresh below. Checked synchronously by `available()`,
@@ -50,7 +50,7 @@ function card(items: MusicItem[], prompt: string) {
   return { type: "music_picker", data: { items, prompt } };
 }
 
-const searchTool: PerchTool = {
+const searchTool: LedgeTool = {
   pluginId: "music",
   runningLabel: "Searching Spotify",
   capability: "search the user's Spotify for tracks, albums, and playlists",
@@ -103,7 +103,7 @@ const searchTool: PerchTool = {
   },
 };
 
-const playTool: PerchTool = {
+const playTool: LedgeTool = {
   pluginId: "music",
   runningLabel: "Starting playback",
   capability: "start a specific song, album, or playlist on Spotify",
@@ -163,7 +163,7 @@ const playTool: PerchTool = {
   },
 };
 
-const playlistsTool: PerchTool = {
+const playlistsTool: LedgeTool = {
   pluginId: "music",
   runningLabel: "Loading your playlists",
   capability: "list the user's own Spotify playlists",
@@ -211,7 +211,7 @@ const playlistsTool: PerchTool = {
   },
 };
 
-const queueTool: PerchTool = {
+const queueTool: LedgeTool = {
   pluginId: "music",
   runningLabel: "Adding to the queue",
   capability: "add a track to the user's Spotify queue",
@@ -259,4 +259,4 @@ const queueTool: PerchTool = {
   },
 };
 
-export const spotifyTools: PerchTool[] = [searchTool, playTool, playlistsTool, queueTool];
+export const spotifyTools: LedgeTool[] = [searchTool, playTool, playlistsTool, queueTool];

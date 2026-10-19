@@ -91,9 +91,9 @@ describe("summaryPrompt", () => {
   });
 
   it("folds new turns into existing notes", () => {
-    const p = summaryPrompt("Working on Perch.", [msg(0, "new stuff")]);
+    const p = summaryPrompt("Working on Ledge.", [msg(0, "new stuff")]);
     expect(p).toContain("Existing notes");
-    expect(p).toContain("Working on Perch.");
+    expect(p).toContain("Working on Ledge.");
     expect(p).toContain("new stuff");
   });
 });

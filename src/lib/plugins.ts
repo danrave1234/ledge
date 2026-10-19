@@ -1,4 +1,4 @@
-export interface PerchPlugin {
+export interface LedgePlugin {
   id: string;
   name: string;
   description: string;
@@ -7,7 +7,7 @@ export interface PerchPlugin {
 
 // First-party plugins. The plugin host keeps the core small — each capability
 // here can be toggled off, and third-party plugins can register the same shape.
-export const BUILTIN_PLUGINS: PerchPlugin[] = [
+export const BUILTIN_PLUGINS: LedgePlugin[] = [
   {
     id: "web-search",
     name: "Web search",
@@ -19,7 +19,7 @@ export const BUILTIN_PLUGINS: PerchPlugin[] = [
     id: "screen-context",
     name: "Screen context",
     description:
-      "Let Perch see your screen when you ask — opt-in per message via the Screen toggle.",
+      "Let Ledge see your screen when you ask — opt-in per message via the Screen toggle.",
     icon: "screen",
   },
   {
@@ -40,21 +40,21 @@ export const BUILTIN_PLUGINS: PerchPlugin[] = [
     id: "computer-control",
     name: "Computer control",
     description:
-      "Let Perch prepare text, browser navigation, or a short plan of clicks and keys for the window you were using — nothing runs until you approve the exact target and steps.",
+      "Let Ledge prepare text, browser navigation, or a short plan of clicks and keys for the window you were using — nothing runs until you approve the exact target and steps.",
     icon: "screen",
   },
   {
     id: "app-launcher",
     name: "App launcher",
     description:
-      "Ask Perch to open an installed app (“open Spotify”). It finds the Start Menu entry and opens it only after you approve the exact app.",
+      "Ask Ledge to open an installed app (“open Spotify”). It finds the Start Menu entry and opens it only after you approve the exact app.",
     icon: "stack",
   },
   {
     id: "folder-finder",
     name: "Folder finder",
     description:
-      "Ask Perch to find a folder or file on your PC (“where is my downloads?”). It searches known folders and opens the match only after you approve the path.",
+      "Ask Ledge to find a folder or file on your PC (“where is my downloads?”). It searches known folders and opens the match only after you approve the path.",
     icon: "folder",
   },
 ];

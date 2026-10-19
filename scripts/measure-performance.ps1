@@ -41,11 +41,11 @@ function Stop-PerformanceMeasurement([string]$Message) {
 }
 
 function Get-ProcessWindowHandle([int]$ProcessId) {
-    if (!("Perch.Performance.NativeWindows" -as [type])) {
+    if (!("Ledge.Performance.NativeWindows" -as [type])) {
         Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
-namespace Perch.Performance {
+namespace Ledge.Performance {
     public static class NativeWindows {
         private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr state);
         [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr state);
@@ -65,14 +65,14 @@ namespace Perch.Performance {
 }
 "@
     }
-    return [Perch.Performance.NativeWindows]::FindForProcess([uint32]$ProcessId)
+    return [Ledge.Performance.NativeWindows]::FindForProcess([uint32]$ProcessId)
 }
 
 $outputDirectory = Split-Path -Parent $OutputPath
 if ($outputDirectory) { New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null }
 $logDirectory = Split-Path -Parent $LogPath
 if ($logDirectory) { New-Item -ItemType Directory -Force -Path $logDirectory | Out-Null }
-Set-Content -LiteralPath $LogPath -Value "Perch packaged performance measurement"
+Set-Content -LiteralPath $LogPath -Value "Ledge packaged performance measurement"
 
 if ($MeasurementPath) {
     $measurement = Get-Content -LiteralPath $MeasurementPath -Raw | ConvertFrom-Json
@@ -101,7 +101,7 @@ if ($MeasurementPath) {
             $healthy = !$process.HasExited -and $handle -ne [IntPtr]::Zero
             $smokePasses += $healthy
             if ($process.HasExited) {
-                Stop-PerformanceMeasurement "Packaged app exited with code $($process.ExitCode) before exposing a window handle (attempt $attempt). Another Perch instance may already be running."
+                Stop-PerformanceMeasurement "Packaged app exited with code $($process.ExitCode) before exposing a window handle (attempt $attempt). Another Ledge instance may already be running."
             }
             if (!$healthy) { Stop-PerformanceMeasurement "Packaged app did not expose a window handle within ${HandleTimeoutMs}ms (attempt $attempt)." }
             $coldStarts += $watch.Elapsed.TotalMilliseconds
