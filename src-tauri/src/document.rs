@@ -123,4 +123,17 @@ mod tests {
                 .contains("malformed")
         );
     }
+
+    /// A real Chromium-generated PDF, so a pdf-extract/lopdf upgrade that
+    /// stops reading ordinary documents fails here rather than for users.
+    #[test]
+    fn extracts_text_from_a_real_pdf() {
+        let bytes = include_bytes!("../tests/fixtures/hello.pdf");
+        let doc = extract("hello.pdf", bytes).expect("fixture PDF should extract");
+        assert!(
+            doc.text.contains("Hello from Ledge fixture"),
+            "{}",
+            doc.text
+        );
+    }
 }

@@ -3,6 +3,16 @@
 All notable changes are documented here. Ledge follows Semantic Versioning once
 it reaches its first stable release.
 
+## Unreleased
+
+- Security: updated rustls (0.23.46), quinn-proto (0.11.19), and lopdf (0.42,
+  via pdf-extract 0.12) for RUSTSEC advisories, including a stack overflow on
+  deeply nested PDFs and TLS handshake issues. Dropped the updater's unused zip
+  support (Windows updates are raw signed installers), removing a vulnerable
+  zip crate. Added a real-PDF extraction test.
+- CI: the dependency audit job now has its token and check-run permission, so
+  it reports results instead of failing on setup.
+
 ## 0.2.0 - 2026-10-19
 
 Perch is now **Ledge**.
