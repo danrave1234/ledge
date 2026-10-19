@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS, CURRENT_SCHEMA } from "./settings";
 /* ==========================================================================
    Settings migrations.
 
-   Perch auto-updates, so a build always has to be able to read a store written
+   Ledge auto-updates, so a build always has to be able to read a store written
    by an OLDER build. Rules:
      - Never change the meaning of an existing field in place; add a migration.
      - Every migration is idempotent and only moves the store UP one version.
@@ -105,7 +105,7 @@ const MIGRATIONS: Migration[] = [
     to: 8,
     describe: "music plugin consent flags added",
     apply(s) {
-      // Both default to false and stay false: consent to let Perch drive a
+      // Both default to false and stay false: consent to let Ledge drive a
       // media player has to be given deliberately, never inherited from an
       // upgrade. The plugin itself is install-to-enable, so an existing user
       // sees nothing until they install it.

@@ -121,3 +121,19 @@ export function exportFilename(title: string, extension: "md" | "json"): string 
     .slice(0, 80);
   return `${safe || "conversation"}.${extension}`;
 }
+
+const DAY_MS = 86_400_000;
+
+/** Bucket label for the history list: "Today", "Yesterday", "Previous 7 days",
+ *  "Previous 30 days", then month names ("March 2026"). Calendar days, in local
+ *  time — "Yesterday" means the previous date, not "24–48 hours ago". */
+export function dateGroup(ts: number, now = Date.now()): string {
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const today = startOfToday.getTime();
+  if (ts >= today) return "Today";
+  if (ts >= today - DAY_MS) return "Yesterday";
+  if (ts >= today - 7 * DAY_MS) return "Previous 7 days";
+  if (ts >= today - 30 * DAY_MS) return "Previous 30 days";
+  return new Date(ts).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}

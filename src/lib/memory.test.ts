@@ -14,7 +14,7 @@ const many = (): Memory[] => [
   mem("Lives in Cebu, Philippines"),
   mem("Is allergic to shellfish"),
   mem("Drives a 2015 Honda Civic"),
-  mem("Works on a Windows desktop widget called Perch"),
+  mem("Works on a Windows desktop widget called Ledge"),
   mem("Plays Dota 2 most evenings"),
   mem("Favourite coffee is a flat white"),
   mem("Has a golden retriever named Biscuit"),

@@ -13,6 +13,7 @@
     reconcileVersion,
     refreshProviderAuth,
     flushWrites,
+    flushToasts,
   } from "$lib/stores";
   import { expand, collapse, toggle, redock, setView } from "$lib/controller";
   import {
@@ -27,13 +28,13 @@
     onGameFocus,
     quitApp,
   } from "$lib/native";
-  import { fadeIn } from "$lib/motion";
+  import { panelIn } from "$lib/motion";
   import {
     createNativeSettingsState,
     initializeGameMode,
     reconcileNativeSettings,
   } from "$lib/native-settings";
-  import { fade } from "svelte/transition";
+  import { fly } from "svelte/transition";
 
   /** Collapse delay after the pointer leaves, and the extra grace period while
       the expand resize settles (a resize fires spurious mouseleave/enter). */
@@ -42,10 +43,13 @@
 
   let expanded = $derived($ui.expanded);
   let resizing = $derived($ui.resizing);
+  let closing = $derived($ui.closing);
   const tauri = isTauri();
   const preview = !tauri;
   let collapseTimer: ReturnType<typeof setTimeout> | null = null;
   let hoverOpenTimer: ReturnType<typeof setTimeout> | null = null;
+  /** True while the hover-open delay counts down, so the handle can show it. */
+  let arming = $state(false);
   let expandedAt = 0;
   let root: HTMLDivElement;
   let pointerInside = false;
@@ -70,6 +74,7 @@
   }
 
   function cancelHoverOpen() {
+    arming = false;
     if (hoverOpenTimer) {
       clearTimeout(hoverOpenTimer);
       hoverOpenTimer = null;
@@ -90,8 +95,10 @@
     cancelCollapse();
     if (!$ui.expanded && $settings.hoverOpen) {
       cancelHoverOpen();
+      arming = $settings.hoverOpenDelay > 0;
       hoverOpenTimer = setTimeout(() => {
         hoverOpenTimer = null;
+        arming = false;
         if ($ui.expanded || !$settings.hoverOpen) return;
         expandedAt = Date.now();
         expand();
@@ -117,10 +124,16 @@
     collapseTimer = setTimeout(() => collapse(), COLLAPSE_MS + cooldownLeft);
   }
 
-  function onFocusOut() {
-    // Focus may move directly between controls inside Perch. Wait until the
+  function onFocusOut(e: FocusEvent) {
+    const from = e.target as Node | null;
+    // Focus may move directly between controls inside Ledge. Wait until the
     // browser has committed the new active element before deciding it is idle.
     queueMicrotask(() => {
+      // The focused control was REMOVED (Send turning into Stop, an approval
+      // button turning into its receipt, onboarding closing). Focus falls to
+      // <body>, but the user hasn't gone anywhere — collapsing here closed the
+      // panel right after a keyboard click.
+      if (from && !from.isConnected) return;
       if (!pointerInside && !root.contains(document.activeElement)) scheduleCollapse();
     });
   }
@@ -143,7 +156,7 @@
 
       if (!preview) {
         // The backend classifies the current foreground window before this
-        // resolves. Only then may the first dock make Perch visible.
+        // resolves. Only then may the first dock make Ledge visible.
         try {
           await initializeGameMode($settings.gameMode, nativeSettingsState, setGameMode);
         } catch (e) {
@@ -185,6 +198,7 @@
             // Persist anything still queued, THEN exit. Rust force-exits after
             // a short watchdog, so this can't leave the app un-quittable.
             try {
+              flushToasts();
               await flushWrites();
             } finally {
               await quitApp();
@@ -251,7 +265,7 @@
       registerHotkey: (hotkey) => void registerHotkey(hotkey, () => toggle()),
       setGameMode: (enabled) => void setGameMode(enabled),
       // Trust the OS, not our stored flag: if the registry write is refused the
-      // toggle must not keep claiming Perch launches at login.
+      // toggle must not keep claiming Ledge launches at login.
       correctAutostart: (autostart) => updateSettings({ autostart }),
     });
     if (
@@ -277,11 +291,21 @@
     <!-- Window is mid-resize: draw nothing so neither the panel nor the handle
          is painted at the wrong size (that produced ghost bars and flicker). -->
   {:else if expanded}
-    <div class="shell" class:preview in:fade={fadeIn}>
+    <div
+      class="shell {$settings.placement}"
+      class:preview
+      class:closing
+      in:fly={panelIn($settings.placement)}
+    >
       <Panel />
     </div>
   {:else}
-    <Handle onhover={onHandleHover} onhoverend={cancelHoverOpen} />
+    <Handle
+      onhover={onHandleHover}
+      onhoverend={cancelHoverOpen}
+      {arming}
+      armMs={$settings.hoverOpenDelay * 1000}
+    />
   {/if}
 </div>
 
@@ -293,6 +317,26 @@
   .shell {
     width: 100%;
     height: 100%;
+    transition:
+      opacity var(--dur-fast) var(--ease),
+      transform var(--dur-fast) var(--ease);
+  }
+  /* Exit: slide back toward the docked edge while fading. Plays for
+     PANEL_EXIT_MS (motion.ts) before the window shrinks to the handle. */
+  .shell.closing {
+    opacity: 0;
+  }
+  .shell.closing.top {
+    transform: translateY(-8px);
+  }
+  .shell.closing.left {
+    transform: translateX(-8px);
+  }
+  .shell.closing.right {
+    transform: translateX(8px);
+  }
+  .shell.preview.closing.top {
+    transform: translate(-50%, -8px);
   }
   /* Browser preview has no native window: fake the docked panel's size.
      Matches PANEL_TOP_W / PANEL_TOP_H in src-tauri/src/window.rs. */

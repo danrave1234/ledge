@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from "$lib/components/Icon.svelte";
   import { canvas, closeCanvas } from "$lib/stores";
-  import { DUR } from "$lib/motion";
+  import { flyIn } from "$lib/motion";
   import { fly } from "svelte/transition";
 
   const COPIED_MS = 1400;
@@ -26,20 +26,29 @@
     tabindex="-1"
     aria-modal="true"
     aria-label={c.image ? "Screen capture" : "Code canvas"}
-    onkeydown={(e) => e.key === "Escape" && closeCanvas()}
-    transition:fly={{ y: 12, duration: DUR }}
+    onkeydown={(e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeCanvas();
+      }
+    }}
+    transition:fly={flyIn()}
   >
     <div class="chead">
       <Icon name={c.image ? "screen" : "stack"} size={15} />
       <span class="clang">{c.lang}</span>
       <span class="cspace"></span>
       {#if !c.image}
-        <button class="btn btn-sm" onclick={copy}>{copied ? "Copied" : "Copy"}</button>
+        <button class="btn btn-sm" onclick={copy}>
+          <Icon name={copied ? "check" : "copy"} size={13} />
+          {copied ? "Copied" : "Copy"}
+        </button>
       {/if}
       <button
         bind:this={closeButton}
         class="icon-btn"
         aria-label="Close canvas"
+        title="Close (Esc)"
         onclick={closeCanvas}
       >
         <Icon name="x" size={16} />

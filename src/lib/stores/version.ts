@@ -9,7 +9,7 @@ export const justUpdatedFrom = writable<string | null>(null);
 
 /** Reconcile the running build with what the store was last written by.
  *
- *  Perch installs updates in the background and relaunches, so a launch can be
+ *  Ledge installs updates in the background and relaunches, so a launch can be
  *  the first one on a new version. Two things have to happen then:
  *    1. Settings written by the old build are migrated — handled in hydrate()
  *       via `migrateSettings`, which runs before this.

@@ -14,7 +14,7 @@
   import { providers, getProvider, type ModelInfo } from "$lib/providers";
   import { curateModels } from "$lib/models";
   import { listOpenAiModels } from "$lib/native";
-  import { scaleIn } from "$lib/motion";
+  import { popIn } from "$lib/motion";
   import { scale } from "svelte/transition";
 
   interface Group {
@@ -134,18 +134,31 @@
     try {
       const ids = await listOpenAiModels();
       setFetchedModels(ids);
-      refreshMsg = ids.length ? `${ids.length} found` : "none";
+      refreshMsg = ids.length ? `${ids.length} found` : "None found";
     } catch {
-      refreshMsg = "need API key";
+      refreshMsg = "Needs an API key";
     }
     refreshing = false;
   }
 </script>
 
+<!-- Capture phase, so this runs before the panel's own Esc (collapse) handler. -->
+<svelte:window
+  onkeydowncapture={(e) => {
+    if (open && e.key === "Escape") {
+      e.preventDefault();
+      open = false;
+    }
+  }}
+/>
+
 <div class="wrap">
   <button
     class="trigger"
     class:warn={currentUnavailable}
+    title={currentUnavailable
+      ? "This model isn't connected — open to pick another or connect an account"
+      : "Choose a model"}
     onclick={() => (open = !open)}
     aria-haspopup="listbox"
     aria-expanded={open}
@@ -153,7 +166,8 @@
   >
     <Icon name="spark" size={14} />
     <span class="lbl">{currentLabel}</span>
-    <Icon name="chevron" size={13} />
+    {#if currentUnavailable}<span class="warn-dot" aria-label="Not connected"></span>{/if}
+    <span class="chev" class:open><Icon name="chevron" size={13} /></span>
   </button>
   {#if open}
     <button class="scrim" onclick={() => (open = false)} aria-label="Close"></button>
@@ -162,7 +176,7 @@
       id="model-menu"
       role="listbox"
       aria-label="Models"
-      transition:scale={scaleIn}
+      transition:scale={popIn()}
     >
       {#if noAccounts}
         <p class="notice">
@@ -182,7 +196,7 @@
               onclick={refresh}
               disabled={refreshing}
             >
-              {refreshing ? "…" : refreshMsg || "refresh"}
+              {refreshing ? "Refreshing…" : refreshMsg || "Refresh"}
             </button>
           {/if}
         </div>
@@ -220,9 +234,10 @@
             <button class="citem-main" onclick={() => pick(s.providerId, id)}>{id}</button
             >
             <button
-              class="link-btn x"
+              class="icon-btn danger"
               onclick={() => removeCustomModel(id)}
-              aria-label="Remove {id}">×</button
+              aria-label="Remove {id}"
+              title="Remove"><Icon name="x" size={13} /></button
             >
           </div>
         {/each}
@@ -235,12 +250,17 @@
       {:else}
         <div class="addrow">
           <input
-            class="cin"
+            class="field cin"
             bind:value={customInput}
             placeholder="Type a model ID…"
+            aria-label="Custom model ID"
             onkeydown={(e) => e.key === "Enter" && addCustom()}
           />
-          <button class="cadd" onclick={addCustom}>Add</button>
+          <button
+            class="btn btn-sm btn-accent"
+            onclick={addCustom}
+            disabled={!customInput.trim()}>Add</button
+          >
         </div>
       {/if}
     </div>
@@ -271,7 +291,21 @@
     background: var(--surface-2);
   }
   .trigger.warn {
-    color: var(--text-3);
+    color: var(--text-2);
+  }
+  .warn-dot {
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--danger);
+  }
+  .chev {
+    display: inline-flex;
+    transition: transform var(--dur) var(--ease);
+  }
+  .chev.open {
+    transform: rotate(180deg);
   }
   .lbl {
     overflow: hidden;
@@ -340,6 +374,9 @@
   .item:hover {
     background: var(--surface-2);
   }
+  .item:focus-visible {
+    outline-offset: -2px;
+  }
   .item.sel {
     color: var(--accent-text);
   }
@@ -366,14 +403,6 @@
     cursor: pointer;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-  .x {
-    font-size: var(--fs-xl);
-    line-height: 1;
-    padding: 4px 9px;
-  }
-  .x:hover {
-    color: var(--danger);
   }
   .connect {
     display: flex;
@@ -416,30 +445,7 @@
     flex: 1;
     min-width: 0;
     height: var(--ctl-sm);
-    padding: 0 9px;
-    border-radius: var(--radius-xs);
-    border: 1px solid var(--border-2);
-    background: var(--surface-2);
-    color: var(--text);
-    font-size: var(--fs-sm);
     font-family: var(--mono);
-    outline: none;
-    transition: border-color var(--dur) var(--ease);
-  }
-  .cin:focus {
-    border-color: var(--accent);
-  }
-  .cadd {
-    flex-shrink: 0;
-    height: var(--ctl-sm);
-    padding: 0 12px;
-    border-radius: var(--radius-xs);
-    border: none;
-    background: var(--accent);
-    color: var(--accent-on);
-    font-family: inherit;
     font-size: var(--fs-sm);
-    font-weight: 600;
-    cursor: pointer;
   }
 </style>

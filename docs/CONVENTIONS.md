@@ -16,8 +16,26 @@ inconsistency.
    selectors only re-map them, so light and dark cannot drift.
 4. **List transition properties explicitly** — never `transition: all`.
 5. **JS transitions use `lib/motion.ts`**, which mirrors the CSS duration tokens.
+   Presets are functions (`flyIn()`, `panelIn(edge)`, …) so they honour
+   `prefers-reduced-motion` at run time — the global CSS rule never reaches
+   Svelte's JS transitions.
 6. Any new accent-derived color must be produced in `theme.ts::applyAccent`, which
    derives hover and on-text from luminance so custom accents stay legible.
+
+## Interaction patterns
+
+- **Approval cards** use the `.approval*` primitives in `tokens.css` and accept
+  `resolved` + `onresolve` props: Message persists the decision on the card
+  (`resolveCard`), so a reopened panel shows the receipt, never the buttons again.
+- **Deletes are undoable**, not confirmed: remove immediately and call
+  `toastUndo(message, undo, commit)`; irreversible cleanup goes in `commit`.
+  Use two-click confirm only for things that cannot be undone (quit, clear all
+  history, remove a plugin and its credentials). Never `window.confirm`.
+- **Keyboard**: the panel owns Esc (stop → back → collapse), Ctrl+N, Ctrl+H and
+  Ctrl+,. A popover that needs Esc listens in the capture phase
+  (`onkeydowncapture` on `svelte:window`) and calls `preventDefault`.
+- Toggles are `role="switch"` + `aria-checked`; chips that toggle context use
+  `aria-pressed`.
 
 ## TypeScript / Svelte
 

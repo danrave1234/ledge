@@ -2,7 +2,7 @@
 //!
 //! Windows keeps a registry of every app currently playing media — Spotify, a
 //! YouTube Music tab, VLC, anything that registers a media session. This module
-//! reads that registry and drives it, which is what lets Perch answer "what song
+//! reads that registry and drives it, which is what lets Ledge answer "what song
 //! is this" and act on "pause" for a player it knows nothing about.
 //!
 //! Two rules govern everything here:
@@ -394,7 +394,7 @@ mod imp {
 pub use imp::{control as control_impl, sessions as sessions_impl};
 
 /* ---------------------------------------------------------------------------
-Non-Windows stubs. Perch is Windows-only today, but the crate still has to
+Non-Windows stubs. Ledge is Windows-only today, but the crate still has to
 compile elsewhere for tooling and CI.
 --------------------------------------------------------------------------- */
 

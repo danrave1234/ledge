@@ -1,6 +1,6 @@
 import type { Component } from "svelte";
 import type { PluginModule } from "./types";
-import type { PerchTool } from "../tools";
+import type { LedgeTool } from "../tools";
 import type { Settings, TurnConsent } from "../types";
 import { webSearchPlugin } from "./web-search";
 import { screenContextPlugin } from "./screen-context";
@@ -37,7 +37,7 @@ export const PLUGIN_MODULES: PluginModule[] = [
  *  Deliberately unfiltered: `tools.ts` applies the gating, so this stays the
  *  complete set and a label lookup still works for a tool that has since become
  *  unavailable. */
-export function allPluginTools(): PerchTool[] {
+export function allPluginTools(): LedgeTool[] {
   return PLUGIN_MODULES.flatMap((p) => p.tools ?? []);
 }
 

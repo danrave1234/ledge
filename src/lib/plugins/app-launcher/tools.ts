@@ -1,6 +1,6 @@
 import { listApps, type LaunchableApp } from "../../native";
 import { pluginActive } from "../../plugins";
-import type { PerchTool } from "../../tools";
+import type { LedgeTool } from "../../tools";
 import { matchApp, normalizeQuery } from "./match";
 
 const MAX_QUERY_LENGTH = 120;
@@ -56,7 +56,7 @@ export async function prepareAppLaunch(
   };
 }
 
-export const openAppTool: PerchTool = {
+export const openAppTool: LedgeTool = {
   pluginId: PLUGIN_ID,
   runningLabel: "Finding the app",
   capability:
@@ -81,7 +81,7 @@ export const openAppTool: PerchTool = {
   run: (args) => prepareAppLaunch(args.app),
 };
 
-export const listInstalledAppsTool: PerchTool = {
+export const listInstalledAppsTool: LedgeTool = {
   pluginId: PLUGIN_ID,
   runningLabel: "Listing installed apps",
   capability: "list the applications installed on this PC",
@@ -108,4 +108,4 @@ export const listInstalledAppsTool: PerchTool = {
   },
 };
 
-export const appLauncherTools: PerchTool[] = [openAppTool, listInstalledAppsTool];
+export const appLauncherTools: LedgeTool[] = [openAppTool, listInstalledAppsTool];

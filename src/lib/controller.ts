@@ -10,6 +10,7 @@ import {
   setConversationSummary,
   activeSummary,
   getPersona,
+  truncateFrom,
   type View,
   type UiState,
 } from "./stores";
@@ -30,6 +31,7 @@ import type { ApprovedScreen, Attachment, Msg, Settings, TurnConsent } from "./t
 import { persistAttachment, persistImage } from "./assets";
 import { messageContent } from "./attachments";
 import { ProgressiveStream } from "./progressive-stream";
+import { PANEL_EXIT_MS } from "./motion";
 
 let abort: AbortController | null = null;
 
@@ -72,20 +74,28 @@ export async function redock() {
 }
 
 export async function expand() {
-  await resizeTo(true);
+  await resizeTo(true, { closing: false });
 }
 
 /** Open the panel, resuming wherever the user was. Pass a view to force one.
  *  It used to default to "chat", so collapsing while reading Settings and
  *  re-opening dumped you back at the chat. */
 export async function openPinned(view?: View) {
-  await resizeTo(true, view ? { view } : {});
+  await resizeTo(true, view ? { view, closing: false } : { closing: false });
 }
 
 export async function collapse(force = false) {
   const u = get(ui);
   if (!force && (u.pinned || u.generating)) return;
-  await resizeTo(false, { pinned: false });
+  if (u.expanded && !u.closing) {
+    // Let the panel play its short exit before the window snaps to the
+    // handle; an instant vanish read as a glitch rather than a close.
+    ui.update((x) => ({ ...x, closing: true }));
+    await new Promise((r) => setTimeout(r, PANEL_EXIT_MS));
+    // Re-opened (hover, hotkey) during the exit: stay open.
+    if (!get(ui).closing) return;
+  }
+  await resizeTo(false, { pinned: false, closing: false });
 }
 
 export async function toggle() {
@@ -469,6 +479,31 @@ async function maybeGenerateTitle(
   } catch {
     /* leave the fallback title */
   }
+}
+
+/** Re-ask the question behind a failed reply: drop the failed exchange and send
+ *  the user's message again. Per-turn consent (web/screen/music) is NOT
+ *  replayed — it was granted for that one send — so a retry is text plus any
+ *  attachment that is still available inline. */
+export async function retry(failedReplyId: string) {
+  if (get(ui).generating) return;
+  const list = get(messages);
+  const at = list.findIndex((m) => m.id === failedReplyId);
+  if (at < 0) return;
+  const user = list
+    .slice(0, at)
+    .reverse()
+    .find((m) => m.role === "user");
+  if (!user) return;
+  const attachment =
+    user.attachment &&
+    ((user.attachment.kind === "image" && user.attachment.data) ||
+      (user.attachment.kind === "document" && user.attachment.text))
+      ? user.attachment
+      : undefined;
+  if (!user.content.trim() && !attachment) return;
+  truncateFrom(user.id);
+  await send(user.content, { attachment });
 }
 
 export function stop() {

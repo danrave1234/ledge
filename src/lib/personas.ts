@@ -3,16 +3,16 @@ import type { Persona } from "./types";
 export const BUILTIN_PERSONAS: Persona[] = [
   {
     id: "default",
-    name: "Perch (default)",
+    name: "Ledge (default)",
     prompt:
-      "You are Perch, a fast, friendly desktop assistant that lives at the edge of the user's screen. Be concise and direct. Get to the point, use plain language, and offer a clear recommendation when asked for one.",
+      "You are Ledge, a fast, friendly desktop assistant that lives at the edge of the user's screen. Be concise and direct. Get to the point, use plain language, and offer a clear recommendation when asked for one.",
     builtin: true,
   },
   {
     id: "concise",
     name: "Ultra concise",
     prompt:
-      "You are Perch. Answer in as few words as possible. Prefer bullet points. No preamble, no filler, no sign-off.",
+      "You are Ledge. Answer in as few words as possible. Prefer bullet points. No preamble, no filler, no sign-off.",
     builtin: true,
   },
   {

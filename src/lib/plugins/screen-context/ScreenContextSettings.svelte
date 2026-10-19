@@ -13,7 +13,8 @@
   <button
     class="switch"
     class:on={state.reviewBeforeSend}
-    aria-pressed={state.reviewBeforeSend}
+    role="switch"
+    aria-checked={state.reviewBeforeSend}
     aria-label="Review and redact before sending"
     onclick={() =>
       screenContextState.update({ reviewBeforeSend: !state.reviewBeforeSend })}
@@ -29,7 +30,8 @@
   <button
     class="switch"
     class:on={state.autoRedact}
-    aria-pressed={state.autoRedact}
+    role="switch"
+    aria-checked={state.autoRedact}
     aria-label="Automatically redact sensitive data"
     onclick={() => screenContextState.update({ autoRedact: !state.autoRedact })}
     ><i></i></button

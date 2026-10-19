@@ -3,6 +3,8 @@
   import ModelMenu from "$lib/components/ModelMenu.svelte";
   import { ui, newChat, updateAvailable, type View } from "$lib/stores";
   import { setView, collapse, stop } from "$lib/controller";
+  import { fadeIn } from "$lib/motion";
+  import { fade } from "svelte/transition";
 
   let view = $derived($ui.view);
   let pinned = $derived($ui.pinned);
@@ -28,25 +30,43 @@
   {#if view === "chat"}
     <ModelMenu />
     <div class="spacer"></div>
-    <button class="icon-btn" aria-label="New chat" onclick={startNewChat}>
+    <button
+      class="icon-btn"
+      aria-label="New chat"
+      title="New chat (Ctrl+N)"
+      onclick={startNewChat}
+    >
       <Icon name="plus" />
     </button>
-    <button class="icon-btn" aria-label="History" onclick={() => setView("history")}>
+    <button
+      class="icon-btn"
+      aria-label="History"
+      title="History (Ctrl+H)"
+      onclick={() => setView("history")}
+    >
       <Icon name="history" />
     </button>
     <button
       class="icon-btn dotwrap"
-      aria-label="Settings"
+      aria-label={$updateAvailable ? "Settings — update available" : "Settings"}
+      title={$updateAvailable ? "Settings — an update is available" : "Settings (Ctrl+,)"}
       onclick={() => setView("settings")}
     >
       <Icon name="settings" />
       {#if $updateAvailable}<span class="dot"></span>{/if}
     </button>
   {:else}
-    <button class="icon-btn" aria-label="Back" onclick={() => setView("chat")}>
+    <button
+      class="icon-btn"
+      aria-label="Back"
+      title="Back (Esc)"
+      onclick={() => setView(view === "personas" ? "settings" : "chat")}
+    >
       <Icon name="back" />
     </button>
-    <strong>{TITLES[view]}</strong>
+    {#key view}
+      <strong in:fade={fadeIn()}>{TITLES[view]}</strong>
+    {/key}
     <div class="spacer"></div>
   {/if}
   <button
@@ -62,7 +82,7 @@
   <button
     class="icon-btn"
     aria-label="Collapse"
-    title="Collapse to the handle — Perch keeps running (quit in Settings → General)"
+    title="Collapse (Esc) — Ledge keeps running at the screen edge"
     onclick={() => collapse(true)}
   >
     <Icon name="x" />
@@ -90,6 +110,12 @@
     color: var(--accent-text);
     background: var(--accent-weak);
   }
+  .pinbtn :global(svg) {
+    transition: transform var(--dur-slow) var(--ease-spring);
+  }
+  .pinbtn.on :global(svg) {
+    transform: rotate(-30deg);
+  }
   .dotwrap {
     position: relative;
   }
@@ -103,5 +129,11 @@
     border-radius: 50%;
     background: var(--accent);
     border: 1.5px solid var(--surface);
+    animation: dot-in var(--dur-slow) var(--ease-spring) both;
+  }
+  @keyframes dot-in {
+    from {
+      transform: scale(0);
+    }
   }
 </style>

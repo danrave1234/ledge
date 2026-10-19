@@ -49,8 +49,8 @@ describe("buildSystemPrompt", () => {
   });
 
   it("includes the compaction notes when older turns were summarised", () => {
-    const p = buildSystemPrompt({ persona: "x", summary: "User is building Perch." });
-    expect(p).toContain("User is building Perch.");
+    const p = buildSystemPrompt({ persona: "x", summary: "User is building Ledge." });
+    expect(p).toContain("User is building Ledge.");
     expect(p).toMatch(/earlier in this conversation/i);
   });
 

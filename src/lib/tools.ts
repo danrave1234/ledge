@@ -40,7 +40,7 @@ export interface ToolRunContext {
   sources: WebResult[];
 }
 
-export interface PerchTool {
+export interface LedgeTool {
   spec: ToolSpec;
   /** Plugin that contributes this tool; the host gates on it. */
   pluginId: string;
@@ -60,7 +60,7 @@ export interface PerchTool {
 }
 
 /** Tools on offer for this turn, after plugin and consent gating. */
-export function availableTools(s: Settings, consent: TurnConsent): PerchTool[] {
+export function availableTools(s: Settings, consent: TurnConsent): LedgeTool[] {
   return allPluginTools().filter((t) => t.available(s, consent));
 }
 

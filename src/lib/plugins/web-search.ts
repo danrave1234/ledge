@@ -1,9 +1,9 @@
-import type { PerchTool } from "../tools";
+import type { LedgeTool } from "../tools";
 import type { PluginModule } from "./types";
 import { webSearch } from "../native";
 import { pluginActive } from "../plugins";
 
-const webSearchTool: PerchTool = {
+const webSearchTool: LedgeTool = {
   pluginId: "web-search",
   runningLabel: "Searching the web",
   capability: "search the live web",

@@ -17,7 +17,7 @@ export const codexProvider: Provider = {
     return isTauri() && (await codexAvailable()) && (await codexLoggedIn());
   },
   // `codex exec` takes one prompt and returns one answer — there is no protocol
-  // for handing a tool call back mid-turn. Perch pre-fetches context for this
+  // for handing a tool call back mid-turn. Ledge pre-fetches context for this
   // provider instead (see controller.ts).
   supportsTools: false,
   async stream(opts: StreamOpts) {
@@ -26,7 +26,7 @@ export const codexProvider: Provider = {
     }
     if (!(await codexAvailable())) {
       throw new Error(
-        "Codex CLI not found. Install it (npm i -g @openai/codex) and run `codex login`, then reopen Perch.",
+        "Codex CLI not found. Install it (npm i -g @openai/codex) and run `codex login`, then reopen Ledge.",
       );
     }
     if (!(await codexLoggedIn())) {

@@ -1,10 +1,10 @@
-# Perch product specification
+# Ledge product specification
 
 Status: implemented personal beta · Updated 2026-08-18
 
 ## Product
 
-Perch is a lightweight Windows assistant that rests as a textless handle on a
+Ledge is a lightweight Windows assistant that rests as a textless handle on a
 chosen display edge and expands into a chat panel. It is local-first, stays out
 of fullscreen apps, and makes sensitive capabilities explicit at the composer.
 
@@ -30,7 +30,7 @@ submission. Screen is off until the user captures it. The composer shows the exa
 image before send, supports drag-to-redact, and invalidates OCR after any redaction.
 The model can only receive that approved image; tools never recapture in the background.
 
-There is no continuous screen capture. Perch excludes its own window, captures the
+There is no continuous screen capture. Ledge excludes its own window, captures the
 display it is docked to, and leaves a visible message receipt when screen or web data
 was actually used. Tool output and remote content are untrusted data, never instructions.
 
@@ -61,7 +61,7 @@ only while Music is active.
 
 CI builds the release NSIS package on `windows-latest`, launches the unpackaged release
 executable three times, and measures cold start from process creation until a Win32
-window handle owned by the process appears (including Perch's initially hidden handle).
+window handle owned by the process appears (including Ledge's initially hidden handle).
 On the final launch it waits five seconds, takes seven
 private-memory samples at 500 ms intervals, and records their median. Installer size is
 the produced NSIS executable size; every launch must remain alive and expose its handle.
@@ -77,7 +77,7 @@ private memory, and 8.5 MiB installer size; update them only from retained CI me
 
 ## Product boundaries
 
-- Perch is not a sandbox for arbitrary third-party code. “Plugin” currently means a
+- Ledge is not a sandbox for arbitrary third-party code. “Plugin” currently means a
   first-party module registered at build time, gated by host-owned permissions.
 - It is not a full coding agent or a hosted service.
 - The Codex provider shells out to the user's official CLI and never reuses internal

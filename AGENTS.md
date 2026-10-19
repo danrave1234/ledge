@@ -1,6 +1,6 @@
-# Perch contributor and agent context
+# Ledge contributor and agent context
 
-Perch is a Windows edge-docked assistant built with Tauri v2, WebView2,
+Ledge is a Windows edge-docked assistant built with Tauri v2, WebView2,
 SvelteKit, and Svelte 5. Read these before changing behavior:
 
 - [SPEC.md](SPEC.md) — current product scope and boundaries

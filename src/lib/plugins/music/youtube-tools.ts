@@ -1,4 +1,4 @@
-import type { PerchTool } from "../../tools";
+import type { LedgeTool } from "../../tools";
 import type { Settings, TurnConsent } from "../../types";
 import { pluginActive } from "../../plugins";
 import { youtubeHasKey } from "../../native";
@@ -35,7 +35,7 @@ function str(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-const youtubeTool: PerchTool = {
+const youtubeTool: LedgeTool = {
   pluginId: "music",
   runningLabel: "Opening YouTube Music",
   capability: "open something on YouTube Music in the user's browser",
@@ -114,4 +114,4 @@ const youtubeTool: PerchTool = {
   },
 };
 
-export const youtubeTools: PerchTool[] = [youtubeTool];
+export const youtubeTools: LedgeTool[] = [youtubeTool];

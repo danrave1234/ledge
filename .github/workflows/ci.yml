@@ -72,7 +72,7 @@ jobs:
       - name: Measure and enforce packaged performance
         shell: pwsh
         run: |
-          $app = Resolve-Path "src-tauri/target/release/perch.exe"
+          $app = Resolve-Path "src-tauri/target/release/ledge.exe"
           $installer = Get-ChildItem "src-tauri/target/release/bundle/nsis/*.exe" | Sort-Object Length -Descending | Select-Object -First 1
           ./scripts/measure-performance.ps1 -AppPath $app -InstallerPath $installer.FullName -BaselinePath scripts/performance-baseline.json -OutputPath artifacts/performance.json -LogPath artifacts/performance.log
       - name: Upload performance diagnostics

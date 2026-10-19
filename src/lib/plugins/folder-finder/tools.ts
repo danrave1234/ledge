@@ -1,6 +1,6 @@
 import { searchPaths, type FoundPath } from "../../native";
 import { pluginActive } from "../../plugins";
-import type { PerchTool } from "../../tools";
+import type { LedgeTool } from "../../tools";
 import { matchPath, normalizeQuery } from "./match";
 
 const MAX_QUERY_LENGTH = 120;
@@ -84,7 +84,7 @@ export async function preparePathFind(rawQuery: unknown): Promise<{ content: str
   };
 }
 
-export const findPathTool: PerchTool = {
+export const findPathTool: LedgeTool = {
   pluginId: PLUGIN_ID,
   runningLabel: "Searching for the path",
   capability:
@@ -109,7 +109,7 @@ export const findPathTool: PerchTool = {
   run: (args) => preparePathFind(args.query),
 };
 
-export const openPathTool: PerchTool = {
+export const openPathTool: LedgeTool = {
   pluginId: PLUGIN_ID,
   runningLabel: "Finding the path",
   capability:
@@ -134,4 +134,4 @@ export const openPathTool: PerchTool = {
   run: (args) => preparePathOpen(args.query),
 };
 
-export const folderFinderTools: PerchTool[] = [findPathTool, openPathTool];
+export const folderFinderTools: LedgeTool[] = [findPathTool, openPathTool];

@@ -1,5 +1,5 @@
 import { writable } from "svelte/store";
-import type { Settings } from "../types";
+import type { Memory, Settings } from "../types";
 import { getProvider } from "../providers";
 import { openaiProvider } from "../providers/openai";
 import { uid } from "./persistence";
@@ -162,6 +162,14 @@ export function toggleMemory(id: string) {
       m.id === id ? { ...m, enabled: !m.enabled } : m,
     ),
   }));
+}
+/** Put a deleted memory back at its old position (undo). */
+export function restoreMemory(memory: Memory, index: number) {
+  settings.update((s) => {
+    const list = (s.memories ?? []).filter((m) => m.id !== memory.id);
+    list.splice(Math.min(index, list.length), 0, memory);
+    return { ...s, memories: list };
+  });
 }
 export function deleteMemory(id: string) {
   settings.update((s) => ({

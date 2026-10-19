@@ -5,7 +5,7 @@
 //! 1. **No client secret.** A desktop app cannot keep one — anybody can read it
 //!    out of the binary. PKCE exists for exactly this case, and the client ID is
 //!    public by design. The user supplies their own ID (see the plugin's
-//!    settings), because Perch has no Spotify app of its own to ship.
+//!    settings), because Ledge has no Spotify app of its own to ship.
 //! 2. **Tokens never reach the WebView.** The refresh token lives in the Windows
 //!    Credential Manager and the access token stays in this process; the
 //!    frontend calls `spotify_request` and never sees either. A token in
@@ -197,11 +197,11 @@ fn percent_decode(s: &str) -> String {
 }
 
 fn done_page(message: &str) -> String {
-    // Kept deliberately plain: it renders in the user's browser, not in Perch.
+    // Kept deliberately plain: it renders in the user's browser, not in Ledge.
     let body = format!(
-        "<!doctype html><meta charset=utf-8><title>Perch</title>\
+        "<!doctype html><meta charset=utf-8><title>Ledge</title>\
          <body style=\"font:15px system-ui;padding:48px;text-align:center\">\
-         <h2>{message}</h2><p>You can close this tab and go back to Perch.</p>"
+         <h2>{message}</h2><p>You can close this tab and go back to Ledge.</p>"
     );
     format!(
         "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",

@@ -183,7 +183,7 @@ pub(crate) fn validate_against_index<'a>(
         })
         .ok_or_else(|| {
             format!(
-                "“{}” is no longer available to open. Ask Perch to find it again.",
+                "“{}” is no longer available to open. Ask Ledge to find it again.",
                 app.name
             )
         })

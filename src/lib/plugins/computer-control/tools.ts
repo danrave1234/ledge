@@ -1,6 +1,6 @@
 import { computerTarget } from "../../native";
 import { pluginActive } from "../../plugins";
-import type { PerchTool } from "../../tools";
+import type { LedgeTool } from "../../tools";
 
 const MAX_INSERT_LENGTH = 20_000;
 const MAX_URL_LENGTH = 2_048;
@@ -32,7 +32,7 @@ function textArg(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-export const prepareTextInsertionTool: PerchTool = {
+export const prepareTextInsertionTool: LedgeTool = {
   pluginId: "computer-control",
   runningLabel: "Preparing text insertion",
   capability:
@@ -40,7 +40,7 @@ export const prepareTextInsertionTool: PerchTool = {
   spec: {
     name: "prepare_text_insertion",
     description:
-      "Prepare exact text for insertion into the field the user was using before opening Perch. This only creates an approval card; it does not insert or submit anything. Use after drafting the final text when the user asks to write, fill, or insert it into another app.",
+      "Prepare exact text for insertion into the field the user was using before opening Ledge. This only creates an approval card; it does not insert or submit anything. Use after drafting the final text when the user asks to write, fill, or insert it into another app.",
     parameters: {
       type: "object",
       properties: {
@@ -67,7 +67,7 @@ export const prepareTextInsertionTool: PerchTool = {
     if (!target) {
       return {
         content:
-          "No external target window is available. Ask the user to focus the destination field, then reopen Perch and try again.",
+          "No external target window is available. Ask the user to focus the destination field, then reopen Ledge and try again.",
       };
     }
     return {
@@ -94,7 +94,7 @@ function normalizedUrl(value: unknown): string | null {
 }
 
 /** Recognize only explicit navigation requests for providers that cannot use
- * Perch's tool-call protocol. Keeping this narrow avoids turning an ordinary
+ * Ledge's tool-call protocol. Keeping this narrow avoids turning an ordinary
  * mention of a URL into a computer action. */
 export function browserNavigationUrl(text: string): string | null {
   if (!/\b(?:change|navigate|open|go|take)\b/i.test(text)) return null;
@@ -105,7 +105,7 @@ export function browserNavigationUrl(text: string): string | null {
   return match ? normalizedUrl(match[0]) : null;
 }
 
-export const prepareBrowserNavigationTool: PerchTool = {
+export const prepareBrowserNavigationTool: LedgeTool = {
   pluginId: "computer-control",
   runningLabel: "Preparing browser navigation",
   capability:
@@ -113,7 +113,7 @@ export const prepareBrowserNavigationTool: PerchTool = {
   spec: {
     name: "prepare_browser_navigation",
     description:
-      "Prepare a web address to open in the browser window the user was using before opening Perch. This only creates an approval card. Use when the user asks to change, open, or navigate the current browser to a URL.",
+      "Prepare a web address to open in the browser window the user was using before opening Ledge. This only creates an approval card. Use when the user asks to change, open, or navigate the current browser to a URL.",
     parameters: {
       type: "object",
       properties: {
@@ -134,7 +134,7 @@ export const prepareBrowserNavigationTool: PerchTool = {
     if (!target) {
       return {
         content:
-          "No browser target is available. Ask the user to focus their browser, then reopen Perch and try again.",
+          "No browser target is available. Ask the user to focus their browser, then reopen Ledge and try again.",
       };
     }
     return {
@@ -190,7 +190,7 @@ function validActions(value: unknown): ComputerAction[] | null {
   return actions;
 }
 
-export const prepareComputerActionsTool: PerchTool = {
+export const prepareComputerActionsTool: LedgeTool = {
   pluginId: "computer-control",
   runningLabel: "Preparing computer actions",
   capability:
@@ -232,7 +232,7 @@ export const prepareComputerActionsTool: PerchTool = {
     if (!target) {
       return {
         content:
-          "No external target window is available. Ask the user to focus it, then reopen Perch and try again.",
+          "No external target window is available. Ask the user to focus it, then reopen Ledge and try again.",
       };
     }
     return {
@@ -242,7 +242,7 @@ export const prepareComputerActionsTool: PerchTool = {
   },
 };
 
-export const computerControlTools: PerchTool[] = [
+export const computerControlTools: LedgeTool[] = [
   prepareTextInsertionTool,
   prepareBrowserNavigationTool,
   prepareComputerActionsTool,

@@ -20,6 +20,13 @@ export interface UiState {
       Nothing is rendered during that gap — drawing either the panel or the
       handle at the wrong window size is what caused ghost bars and flicker. */
   resizing: boolean;
+  /** True for the short exit animation that plays before the window shrinks
+      back to the handle. */
+  closing: boolean;
+  /** The composer's unsent text. Lives here, not in Composer: the panel is
+      destroyed while collapsed, so a component-local draft was silently lost
+      every time the widget closed mid-sentence. */
+  draft: string;
 }
 export const ui = writable<UiState>({
   expanded: false,
@@ -29,7 +36,30 @@ export const ui = writable<UiState>({
   generating: false,
   activity: null,
   resizing: false,
+  closing: false,
+  draft: "",
 });
+
+export function setDraft(draft: string) {
+  ui.update((u) => (u.draft === draft ? u : { ...u, draft }));
+}
+
+/* ---------- composer requests ---------- */
+/** A one-shot instruction for the composer, e.g. from an empty-state
+    suggestion: put this text in the box, switch on the context it needs, and
+    optionally send. Going through the composer (rather than calling `send`
+    directly) keeps one send path, so a "summarize my screen" suggestion gets
+    the same capture + review flow as typing it. */
+export interface ComposerRequest {
+  text: string;
+  screen?: boolean;
+  web?: boolean;
+  send?: boolean;
+}
+export const composerRequest = writable<ComposerRequest | null>(null);
+export function requestComposer(req: ComposerRequest) {
+  composerRequest.set(req);
+}
 
 export function setSettingsSection(settingsSection: string) {
   ui.update((u) => ({ ...u, settingsSection }));

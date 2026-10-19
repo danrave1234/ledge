@@ -1,5 +1,7 @@
 <script lang="ts">
+  import Icon from "$lib/components/Icon.svelte";
   import { launchApp, type LaunchableApp } from "$lib/native";
+  import type { CardResolution } from "$lib/types";
 
   interface CardData {
     app?: LaunchableApp;
@@ -7,14 +9,23 @@
     query?: string;
   }
 
-  let { data = {} }: { data?: CardData } = $props();
+  let {
+    data = {},
+    resolved,
+    onresolve,
+  }: {
+    data?: CardData;
+    resolved?: CardResolution;
+    onresolve?: (r: CardResolution) => void;
+  } = $props();
   // The user may switch to an alternative before approving; the approved app
   // is whatever is selected when Open is pressed, never the model's guess alone.
   // Card data is immutable once attached, so seeding from the initial value is
   // intentional.
   // svelte-ignore state_referenced_locally
   let selected: LaunchableApp | undefined = $state(data.app);
-  let status: "pending" | "opening" | "opened" | "cancelled" = $state("pending");
+  // svelte-ignore state_referenced_locally
+  let status = $state(resolved?.status ?? "pending");
   let error = $state("");
 
   const choices = $derived(
@@ -25,13 +36,18 @@
     return app.kind === "system" ? "Built-in Windows app" : app.path;
   }
 
+  function settle(next: "opened" | "cancelled") {
+    status = next;
+    onresolve?.({ status: next, label: selected?.name });
+  }
+
   async function open() {
     if (status !== "pending" || !selected) return;
     status = "opening";
     error = "";
     try {
       await launchApp(selected);
-      status = "opened";
+      settle("opened");
     } catch (e) {
       status = "pending";
       error = e instanceof Error ? e.message : String(e);
@@ -39,48 +55,51 @@
   }
 </script>
 
-<div class="card">
-  <div class="eyebrow">Open app approval</div>
-  {#if choices.length > 1 && status === "pending"}
-    <div class="hint">“{data.query}” matched several apps — pick the one to open.</div>
-    <div class="choices" role="radiogroup" aria-label="Which app to open">
-      {#each choices as app (app.path)}
-        <button
-          type="button"
-          class="choice"
-          class:selected={selected?.path === app.path}
-          role="radio"
-          aria-checked={selected?.path === app.path}
-          onclick={() => (selected = app)}
-        >
-          <span class="name">{app.name}</span>
-          <span class="source">{sourceLabel(app)}</span>
-        </button>
-      {/each}
-    </div>
-  {:else if selected}
-    <strong>{selected.name}</strong>
-    <div class="source block">{sourceLabel(selected)}</div>
-  {:else}
-    <strong>Unknown app</strong>
-  {/if}
-  {#if error}<div class="error" role="alert">{error}</div>{/if}
+<div class="approval">
+  <div class="approval-eyebrow"><Icon name="arrow-right" size={13} /> Open app</div>
   {#if status === "opened"}
-    <div class="receipt" role="status">Opened {selected?.name}.</div>
+    <div class="approval-receipt done" role="status">
+      <Icon name="check" size={14} /> Opened {resolved?.label ?? selected?.name}.
+    </div>
   {:else if status === "cancelled"}
-    <div class="receipt" role="status">Cancelled. Nothing was opened.</div>
+    <div class="approval-receipt" role="status">Cancelled — nothing was opened.</div>
   {:else}
-    <div class="actions">
+    {#if choices.length > 1}
+      <div class="hint">“{data.query}” matched several apps — pick the one to open.</div>
+      <div class="choices" role="radiogroup" aria-label="Which app to open">
+        {#each choices as app (app.path)}
+          <button
+            type="button"
+            class="choice"
+            class:selected={selected?.path === app.path}
+            role="radio"
+            aria-checked={selected?.path === app.path}
+            onclick={() => (selected = app)}
+          >
+            <span class="name">{app.name}</span>
+            <span class="source">{sourceLabel(app)}</span>
+          </button>
+        {/each}
+      </div>
+    {:else if selected}
+      <strong>{selected.name}</strong>
+      <div class="approval-detail">{sourceLabel(selected)}</div>
+    {:else}
+      <strong>Unknown app</strong>
+    {/if}
+    {#if error}<div class="approval-error" role="alert">{error}</div>{/if}
+    <div class="approval-actions">
       <button
         class="btn btn-sm btn-accent"
         onclick={open}
         disabled={status === "opening" || !selected}
       >
-        {status === "opening" ? "Opening…" : `Open ${selected?.name ?? ""}`}
+        {#if status === "opening"}<span class="spinner"></span> Opening…{:else}Open {selected?.name ??
+            ""}{/if}
       </button>
       <button
         class="btn btn-sm"
-        onclick={() => (status = "cancelled")}
+        onclick={() => settle("cancelled")}
         disabled={status === "opening"}>Cancel</button
       >
     </div>
@@ -88,19 +107,6 @@
 </div>
 
 <style>
-  .card {
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-  }
-  .eyebrow {
-    margin-bottom: 4px;
-    color: var(--text-2);
-    font-size: var(--fs-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
   .hint {
     margin-bottom: 8px;
     font-size: var(--fs-sm);
@@ -145,26 +151,5 @@
     overflow-wrap: anywhere;
     font-size: var(--fs-xs);
     color: var(--text-3);
-  }
-  .source.block {
-    margin: 6px 0 10px;
-    padding: 9px;
-    border-radius: var(--radius-sm);
-    background: var(--surface-2);
-    font-size: var(--fs-sm);
-    color: var(--text-2);
-  }
-  .actions {
-    display: flex;
-    gap: 8px;
-  }
-  .error {
-    margin-bottom: 8px;
-    color: var(--danger);
-    font-size: var(--fs-sm);
-  }
-  .receipt {
-    color: var(--text-2);
-    font-size: var(--fs-sm);
   }
 </style>
