@@ -602,9 +602,9 @@ mod tests {
 
     #[test]
     fn skip_dirs_are_filtered() {
-        assert!(SKIP_DIRS.iter().any(|s| *s == ".git"));
-        assert!(SKIP_DIRS.iter().any(|s| *s == "node_modules"));
-        assert!(SKIP_DIRS.iter().any(|s| *s == "AppData"));
+        assert!(SKIP_DIRS.contains(&".git"));
+        assert!(SKIP_DIRS.contains(&"node_modules"));
+        assert!(SKIP_DIRS.contains(&"AppData"));
     }
 
     #[test]
