@@ -89,6 +89,10 @@ jobs:
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest
+    # rustsec/audit-check reports through a check run.
+    permissions:
+      contents: read
+      checks: write
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
