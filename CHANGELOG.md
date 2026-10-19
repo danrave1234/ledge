@@ -3,7 +3,7 @@
 All notable changes are documented here. Ledge follows Semantic Versioning once
 it reaches its first stable release.
 
-## Unreleased
+## 0.2.1 - 2026-10-19
 
 - Security: updated rustls (0.23.46), quinn-proto (0.11.19), and lopdf (0.42,
   via pdf-extract 0.12) for RUSTSEC advisories, including a stack overflow on
