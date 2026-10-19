@@ -1,6 +1,6 @@
 {
   "name": "ledge",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Ledge — an edge-docked AI assistant widget for Windows",
   "private": true,
   "type": "module",
